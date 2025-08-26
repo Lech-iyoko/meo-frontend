@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent, useRef } from 'react';
 import styles from './Chatbot.module.css';
 import { postChatMessage } from '../app/lib/api';
-import { Message, Source } from '../app/lib/types';
+import { Message} from '../app/lib/types';
 
 export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
