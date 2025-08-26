@@ -1,3 +1,4 @@
+// src/lib/api.ts
 import { Source } from './types';
 
 export interface ChatResponse {
@@ -7,34 +8,18 @@ export interface ChatResponse {
 }
 
 export async function postChatMessage(query: string, sessionId: string | null): Promise<ChatResponse> {
-    const apiUrl = process.env.NEXT_PUBLIC_MEO_API_URL;
-    if (!apiUrl) {
-        throw new Error("API URL is not configured in .env.local");
-    }
+    // The endpoint is now a simple, same-origin path to our new API route
+    const endpoint = '/api/chat';
 
-    const effectiveSessionId = sessionId || crypto.randomUUID();
-
-    const response = await fetch(`${apiUrl}/chat`, {
+    const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            query: query,
-            session_id: effectiveSessionId,
-        }),
+        body: JSON.stringify({ query, session_id: sessionId }),
     });
 
     if (!response.ok) {
-        // --- THIS IS THE FIX ---
-        // We type the error as 'unknown' and then check its properties safely.
-        const errorData: unknown = await response.json();
-        const errorMessage = (
-            typeof errorData === 'object' && 
-            errorData !== null && 
-            'detail' in errorData && 
-            typeof (errorData as { detail: unknown }).detail === 'string'
-        ) ? (errorData as { detail: string }).detail : 'Failed to fetch chat response';
-        
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to fetch chat response');
     }
     return await response.json();
 }
