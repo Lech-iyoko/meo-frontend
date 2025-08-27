@@ -1,4 +1,6 @@
 // src/app/api/chat/route.ts
+export const runtime = 'nodejs'; 
+
 import { NextResponse } from 'next/server';
 
 // This is the main function that handles incoming POST requests from our frontend
