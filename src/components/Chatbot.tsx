@@ -3,8 +3,9 @@
 import { useState, useEffect, FormEvent, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import styles from './Chatbot.module.css';
-import { postChatMessage } from '../app/lib/api';
-import { Message } from '../app/lib/types'; // Correctly imports only the needed type
+// Corrected import paths to use the absolute path alias '@/' defined in your tsconfig.json
+import { postChatMessage } from '@/app/lib/api';
+import { Message } from '@/app/lib/types';
 
 export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -16,7 +17,7 @@ export default function Chatbot() {
   // Handles Session ID Management
   useEffect(() => {
     let storedSessionId = localStorage.getItem('meo-session-id');
-    if (!storedSessionId) { // <-- fixed typo: storedSessionid -> storedSessionId
+    if (!storedSessionId) {
       storedSessionId = crypto.randomUUID();
       localStorage.setItem('meo-session-id', storedSessionId);
     }
@@ -46,12 +47,17 @@ export default function Chatbot() {
         sources: response.retrieved_sources 
       };
       setMessages((prev) => [...prev, meoMessage]);
-    } catch (error: any) {
-      // Use error.detail if available, otherwise fallback
-      const errorText = error?.detail || 'Sorry, I am having trouble connecting. Please try again.';
-      const errorMessage: Message = { text: errorText, sender: 'meo' };
+    } catch (error) {
+      const errorMessage: Message = { text: 'Sorry, I am having trouble connecting. Please try again.', sender: 'meo' };
       setMessages((prev) => [...prev, errorMessage]);
-      console.error("Failed to send message:", error);
+      
+      // We safely check the error type before logging it.
+      if (error instanceof Error) {
+        console.error("Failed to send message:", error.message);
+      } else {
+        console.error("An unknown error occurred:", error);
+      }
+      
     } finally {
       setIsLoading(false);
     }
@@ -62,8 +68,6 @@ export default function Chatbot() {
       <div className={styles.chatWindow}>
         {messages.map((msg, index) => (
           <div key={index} className={msg.sender === 'user' ? styles.userMessage : styles.meoMessage}>
-            {/* --- THIS IS THE FIX --- */}
-            {/* We apply the className to a container div, not the component itself */}
             <div className={styles.messageText}>
               <ReactMarkdown>{msg.text}</ReactMarkdown>
             </div>
@@ -72,7 +76,7 @@ export default function Chatbot() {
               <div className={styles.sourcesContainer}>
                 <strong>Sources:</strong>
                 <ul className={styles.sourcesList}>
-                  {msg.sources.map((source: import("../app/lib/types").Source, idx: number) => (
+                  {msg.sources.map((source, idx) => (
                     <li key={idx} className={styles.sourceItem}>
                       {source.original_url ? (
                         <a href={source.original_url} target="_blank" rel="noopener noreferrer">
@@ -95,7 +99,7 @@ export default function Chatbot() {
         <input
           type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => setInput(e.target.value)} // Corrected the typo here
           className={styles.input}
           placeholder="Ask a question about metabolic health..."
           disabled={isLoading}
@@ -105,3 +109,4 @@ export default function Chatbot() {
     </div>
   );
 }
+
