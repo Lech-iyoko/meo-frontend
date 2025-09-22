@@ -7,13 +7,15 @@ export interface ChatResponse {
 }
 
 export async function postChatMessage(query: string, sessionId: string): Promise<ChatResponse> {
-    const apiUrl = process.env.NEXT_PUBLIC_MEO_API_URL;
-    if (!apiUrl) {
-        throw new Error("API URL is not configured in .env.local. Please check your configuration.");
-    }
-
-    // The endpoint should point to /api/chat, which is your proxy
+    // The frontend should call the relative proxy endpoint on the same origin: /api/chat
+    // Do not throw if NEXT_PUBLIC_MEO_API_URL is missing in the browser — the server proxy will use MEO_API_URL.
     const endpoint = `/api/chat`;
+
+    if (!process.env.NEXT_PUBLIC_MEO_API_URL) {
+        // Non-fatal: warn in the browser console so developers know about the missing environment var.
+        // eslint-disable-next-line no-console
+        console.warn('NEXT_PUBLIC_MEO_API_URL is not set; calling local proxy at /api/chat');
+    }
 
     const response = await fetch(endpoint, {
         method: 'POST',
