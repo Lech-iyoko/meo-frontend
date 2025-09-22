@@ -3,26 +3,25 @@
 import { useState, useEffect, FormEvent, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import styles from './Chatbot.module.css';
-// Corrected to use a relative path to bypass potential alias issues
-import { postChatMessage } from '../app/lib/api';
-import { Message } from '../app/lib/types';
+// Using absolute path aliases defined in tsconfig.json for robustness
+import { postChatMessage } from '@/app/lib/api';
+import { Message } from '@/app/lib/types';
 
 export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  // Initialize sessionId as an empty string
-  const [sessionId, setSessionId] = useState<string>('');
+  // Initialize sessionId as null to be more explicit about its initial state
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Handles Session ID Management
   useEffect(() => {
-    let storedSessionId = localStorage.getItem('meo-session-id');
-    if (!storedSessionId) {
-      storedSessionId = crypto.randomUUID();
-      localStorage.setItem('meo-session-id', storedSessionId);
-    }
+    // This effect runs only once on the client side after the component mounts
+    const storedSessionId = localStorage.getItem('meo-session-id') || crypto.randomUUID();
     setSessionId(storedSessionId);
+    localStorage.setItem('meo-session-id', storedSessionId);
+    console.log('Session ID Initialized:', storedSessionId);
   }, []);
 
   // Auto-scrolls the chat window
@@ -32,8 +31,12 @@ export default function Chatbot() {
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    // This guard clause now reliably prevents sending messages before session is ready
-    if (!input.trim() || isLoading || !sessionId) return;
+
+    // Add a log to see why a message might not be sending
+    if (!input.trim() || isLoading || !sessionId) {
+        console.log('Send message blocked:', { input: input.trim(), isLoading, sessionId });
+        return;
+    }
 
     const userMessage: Message = { text: input, sender: 'user' };
     setMessages((prev) => [...prev, userMessage]);
@@ -63,9 +66,7 @@ export default function Chatbot() {
       setIsLoading(false);
     }
   };
-
-  // --- THIS IS THE FIX ---
-  // We create a variable to determine if the form should be disabled.
+  
   const isFormDisabled = isLoading || !sessionId;
 
   return (
@@ -107,7 +108,7 @@ export default function Chatbot() {
           onChange={(e) => setInput(e.target.value)}
           className={styles.input}
           placeholder={isFormDisabled ? "Initializing session..." : "Ask a question about metabolic health..."}
-          disabled={isFormDisabled} // The form is now disabled until the session ID is ready
+          disabled={isFormDisabled}
         />
         <button type="submit" className={styles.button} disabled={isFormDisabled}>Send</button>
       </form>
