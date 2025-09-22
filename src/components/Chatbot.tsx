@@ -4,7 +4,7 @@ import { useState, useEffect, FormEvent, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import styles from './Chatbot.module.css';
 import { postChatMessage } from '../app/lib/api';
-import { Message } from '../app/lib/types';
+import { Message } from '../app/lib/types'; // Correctly imports only the needed type
 
 export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -13,15 +13,17 @@ export default function Chatbot() {
   const [sessionId, setSessionId] = useState<string>('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Handles Session ID Management
   useEffect(() => {
     let storedSessionId = localStorage.getItem('meo-session-id');
-    if (!storedSessionId) {
+    if (!storedSessionId) { // <-- fixed typo: storedSessionid -> storedSessionId
       storedSessionId = crypto.randomUUID();
       localStorage.setItem('meo-session-id', storedSessionId);
     }
     setSessionId(storedSessionId);
   }, []);
 
+  // Auto-scrolls the chat window
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -39,13 +41,15 @@ export default function Chatbot() {
     try {
       const response = await postChatMessage(currentInput, sessionId);
       const meoMessage: Message = { 
-        text: response.response, // <-- This was changed from response.answer
+        text: response.response, 
         sender: 'meo',
         sources: response.retrieved_sources 
       };
       setMessages((prev) => [...prev, meoMessage]);
-    } catch (error) {
-      const errorMessage: Message = { text: 'Sorry, I am having trouble connecting. Please try again.', sender: 'meo' };
+    } catch (error: any) {
+      // Use error.detail if available, otherwise fallback
+      const errorText = error?.detail || 'Sorry, I am having trouble connecting. Please try again.';
+      const errorMessage: Message = { text: errorText, sender: 'meo' };
       setMessages((prev) => [...prev, errorMessage]);
       console.error("Failed to send message:", error);
     } finally {
@@ -58,13 +62,17 @@ export default function Chatbot() {
       <div className={styles.chatWindow}>
         {messages.map((msg, index) => (
           <div key={index} className={msg.sender === 'user' ? styles.userMessage : styles.meoMessage}>
-            <ReactMarkdown className={styles.messageText}>{msg.text}</ReactMarkdown>
+            {/* --- THIS IS THE FIX --- */}
+            {/* We apply the className to a container div, not the component itself */}
+            <div className={styles.messageText}>
+              <ReactMarkdown>{msg.text}</ReactMarkdown>
+            </div>
             
             {msg.sender === 'meo' && msg.sources && msg.sources.length > 0 && (
               <div className={styles.sourcesContainer}>
                 <strong>Sources:</strong>
                 <ul className={styles.sourcesList}>
-                  {msg.sources.map((source, idx) => (
+                  {msg.sources.map((source: import("../app/lib/types").Source, idx: number) => (
                     <li key={idx} className={styles.sourceItem}>
                       {source.original_url ? (
                         <a href={source.original_url} target="_blank" rel="noopener noreferrer">
@@ -97,4 +105,3 @@ export default function Chatbot() {
     </div>
   );
 }
-
