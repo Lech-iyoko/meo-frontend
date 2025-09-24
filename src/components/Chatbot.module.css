@@ -1,4 +1,5 @@
-/* Updated container for centered layout */
+/* src/components/Chatbot.module.css */
+
 .chatContainer {
   width: 100%;
   max-width: 800px;
@@ -6,17 +7,16 @@
   display: flex;
   flex-direction: column;
   font-family: var(--font-geist-sans), sans-serif;
-  /* Updated to Meterbolic's deep teal background */
   background: linear-gradient(135deg, #2d5a5a 0%, #1e4444 100%);
   color: #ffffff;
   position: relative;
 }
 
-/* Added header greeting styles */
 .headerGreeting {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-grow: 1; /* Allows the greeting to center vertically */
   padding: 2rem;
   text-align: center;
 }
@@ -38,7 +38,6 @@
   gap: 2rem;
 }
 
-/* Updated message wrapper for dark theme */
 .messageWrapper {
   display: flex;
   gap: 1rem;
@@ -55,15 +54,8 @@
   justify-content: center;
   font-size: 0.75rem;
   font-weight: 500;
-  color: white;
+  color: #1e4444; /* Dark text for contrast on lime green */
   flex-shrink: 0;
-}
-.userAvatar {
-  /* Updated to Meterbolic's lime-green accent */
-  background: #a4d65e;
-}
-.meoAvatar {
-  /* Updated to Meterbolic's lime-green accent */
   background: #a4d65e;
 }
 
@@ -73,15 +65,12 @@
   padding-top: 4px;
 }
 
-/* Updated message text for Meterbolic theme */
 .messageText {
   color: #e5e7eb;
   line-height: 1.7;
-  /* Updated background to match Meterbolic's teal theme */
   background: rgba(164, 214, 94, 0.08);
   padding: 1rem;
   border-radius: 12px;
-  /* Updated border to use Meterbolic's accent color */
   border: 1px solid rgba(164, 214, 94, 0.2);
 }
 
@@ -106,17 +95,15 @@
 }
 .messageText strong {
   font-weight: 600;
-  color: #ffffff;
+  color: #a4d65e; /* Use accent color for bold */
 }
 
 .sourcesWrapper {
   margin-top: 1rem;
 }
 .sourcesButton {
-  /* Updated to use Meterbolic's lime-green accent */
   background-color: rgba(164, 214, 94, 0.15);
   color: #e5e7eb;
-  /* Updated border to match accent color */
   border: 1px solid rgba(164, 214, 94, 0.3);
   padding: 4px 12px;
   border-radius: 8px;
@@ -126,14 +113,12 @@
   transition: background-color 0.2s;
 }
 .sourcesButton:hover {
-  /* Updated hover state with Meterbolic colors */
   background-color: rgba(164, 214, 94, 0.25);
 }
 
 .sourcesContainer {
   margin-top: 12px;
   padding: 12px;
-  /* Updated to match Meterbolic theme */
   border: 1px solid rgba(164, 214, 94, 0.2);
   border-radius: 8px;
   background-color: rgba(164, 214, 94, 0.08);
@@ -157,21 +142,17 @@
   align-items: center;
   gap: 4px;
   padding: 1rem;
-  /* Updated background to match Meterbolic theme */
   background: rgba(164, 214, 94, 0.08);
   border-radius: 12px;
-  /* Updated border to use accent color */
   border: 1px solid rgba(164, 214, 94, 0.2);
 }
 .typingIndicator span {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  /* Updated to Meterbolic's lime-green */
   background-color: #a4d65e;
   animation: bounce 1.2s infinite;
 }
-
 .typingIndicator span:nth-child(2) {
   animation-delay: 0.2s;
 }
@@ -179,23 +160,17 @@
   animation-delay: 0.4s;
 }
 @keyframes bounce {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 
-/* Added centered form positioning */
 .formCentered {
   position: absolute;
   bottom: 2rem;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 4rem);
-  max-width: 600px;
+  max-width: 700px;
 }
 
 .formBottom {
@@ -209,17 +184,14 @@
   width: 100%;
 }
 
-/* Updated input styles for Meterbolic theme */
 .input {
   flex-grow: 1;
   padding: 1rem 1.5rem;
   border-radius: 24px;
-  /* Updated border to use Meterbolic's accent color */
   border: 1px solid rgba(164, 214, 94, 0.3);
   font-size: 1rem;
   transition: border-color 0.2s, box-shadow 0.2s;
   font-family: var(--font-geist-sans), sans-serif;
-  /* Updated background to match Meterbolic theme */
   background-color: rgba(164, 214, 94, 0.08);
   color: #ffffff;
 }
@@ -228,7 +200,6 @@
 }
 .input:focus {
   outline: none;
-  /* Updated focus state to use Meterbolic's lime-green */
   border-color: #a4d65e;
   background-color: rgba(164, 214, 94, 0.15);
   box-shadow: 0 0 0 3px rgba(164, 214, 94, 0.2);
@@ -241,44 +212,38 @@
   width: 48px;
   height: 48px;
   padding: 0;
-  border-radius: 24px;
+  border-radius: 50%;
   border: none;
-  /* Updated to Meterbolic's lime-green accent */
   background: #a4d65e;
-  color: white;
+  color: #1e4444; /* Dark icon for contrast */
   cursor: pointer;
   transition: background-color 0.2s, transform 0.1s;
+  flex-shrink: 0;
 }
-.button svg {
+.sendIcon {
   width: 20px;
   height: 20px;
-  transform: translateY(-1px) rotate(-45deg);
 }
 
 .button:hover:not(:disabled) {
-  /* Updated hover state to darker lime-green */
   background: #8bc34a;
 }
 .button:active:not(:disabled) {
   transform: scale(0.95);
 }
 .button:disabled {
-  /* Updated disabled state to muted teal */
   background: #4a6b6b;
   cursor: not-allowed;
 }
 
-/* Added responsive design */
 @media (max-width: 768px) {
   .greetingText {
     font-size: 1.5rem;
   }
-
   .formCentered {
     width: calc(100% - 2rem);
     bottom: 1rem;
   }
-
   .input {
     padding: 0.875rem 1.25rem;
   }
