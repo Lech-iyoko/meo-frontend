@@ -6,11 +6,8 @@ import styles from "./Chatbot.module.css"
 import { postChatMessage } from "@/app/lib/api"
 import type { Message } from "@/app/lib/types"
 
-// NOTE: The initial welcome message is now handled by the UI's header greeting,
-// so the 'welcomeMessage' constant is no longer needed here.
-
 export default function Chatbot() {
-  const [messages, setMessages] = useState<Message[]>([]) // Starts with an empty array
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState<string>("")
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -66,7 +63,8 @@ export default function Chatbot() {
     <div className={styles.chatContainer}>
       {showGreeting && (
         <div className={styles.headerGreeting}>
-          <h1 className={styles.greetingText}>Hi, I'm MeO. How can I assist you today?</h1>
+          {/* --- THIS IS THE FIX --- */}
+          <h1 className={styles.greetingText}>Hi, I&apos;m MeO. How can I assist you today?</h1>
         </div>
       )}
       
@@ -127,7 +125,6 @@ export default function Chatbot() {
             disabled={isFormDisabled}
           />
           <button type="submit" className={styles.button} disabled={isFormDisabled}>
-            {/* CORRECTED: Paper Plane SVG Icon */}
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.sendIcon}>
                 <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
