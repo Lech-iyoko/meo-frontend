@@ -6,18 +6,19 @@ import styles from "./Chatbot.module.css"
 import { postChatMessage } from "@/app/lib/api"
 import type { Message } from "@/app/lib/types"
 
+// The welcome message that appears IN the chat window
 const welcomeMessage: Message = {
-  text: "Hi! I'm Meo, Let's get healthy!",
+  text: "Hi! I'm Meo. Let's get healthy!",
   sender: "meo",
   sources: [],
 }
 
 export default function Chatbot() {
+  // The chat now correctly starts with the welcome message
   const [messages, setMessages] = useState<Message[]>([welcomeMessage])
   const [input, setInput] = useState<string>("")
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
-  // State to track which message's sources are open
   const [openSourcesIndex, setOpenSourcesIndex] = useState<number | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
@@ -36,11 +37,13 @@ export default function Chatbot() {
     if (!input.trim() || isLoading || !sessionId) return
 
     const userMessage: Message = { text: input, sender: "user" }
+    // Always add the new user message to the history
     setMessages((prev) => [...prev, userMessage])
+    
     const currentInput = input
     setInput("")
     setIsLoading(true)
-    setOpenSourcesIndex(null) // Close any open sources when a new message is sent
+    setOpenSourcesIndex(null)
 
     try {
       const response = await postChatMessage(currentInput, sessionId)
@@ -64,68 +67,71 @@ export default function Chatbot() {
   }
 
   const isFormDisabled = isLoading || !sessionId
+  
+  // The form is centered only if the conversation hasn't started yet.
+  const isConversationStarted = messages.length > 1;
 
   return (
     <div className={styles.chatContainer}>
+      {/* --- THIS HEADER IS NOW ALWAYS VISIBLE --- */}
       <div className={styles.headerGreeting}>
         <h1 className={styles.greetingText}>
-          Hi, I'm Me
-          <img src="/droplet-logo.png" alt="O" className={styles.dropletLogo} />. Let's get healthy!
+          Hi, I&apos;m Me
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/droplet-logo.png" alt="O" className={styles.dropletLogo} />
+          . Let&apos;s get healthy!
         </h1>
       </div>
 
       <div className={styles.chatWindow}>
-        {messages.length > 1 &&
-          messages.map((msg, index) => (
-            <div key={index} className={styles.messageWrapper}>
-              {msg.sender === "user" ? (
-                // User messages in bubbles (right-aligned)
-                <div className={styles.userMessageBubble}>
+        {messages.map((msg, index) => (
+          <div key={index} className={styles.messageWrapper}>
+            {msg.sender === "user" ? (
+              <div className={styles.userMessageBubble}>
+                <ReactMarkdown>{msg.text}</ReactMarkdown>
+              </div>
+            ) : (
+              <div className={styles.aiMessageFlow}>
+                <div className={styles.aiMessageContent}>
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  {msg.sources && msg.sources.length > 0 && (
+                    <div className={styles.sourcesWrapper}>
+                      <button onClick={() => toggleSources(index)} className={styles.sourcesButton}>
+                        Sources ({msg.sources.length})
+                      </button>
+                      {openSourcesIndex === index && (
+                        <div className={styles.sourcesContainer}>
+                          <ul className={styles.sourcesList}>
+                            {msg.sources.map((source, idx) => (
+                              <li key={idx} className={styles.sourceItem}>
+                                <span>{source.source_name}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                // AI messages as flowing text (left-aligned, no bubble)
-                <div className={styles.aiMessageFlow}>
-                  <div className={styles.aiMessageContent}>
-                    <ReactMarkdown>{msg.text}</ReactMarkdown>
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className={styles.sourcesWrapper}>
-                        <button onClick={() => toggleSources(index)} className={styles.sourcesButton}>
-                          Sources ({msg.sources.length})
-                        </button>
-                        {openSourcesIndex === index && (
-                          <div className={styles.sourcesContainer}>
-                            <ul className={styles.sourcesList}>
-                              {msg.sources.map((source, idx) => (
-                                <li key={idx} className={styles.sourceItem}>
-                                  <span>{source.source_name}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
+              </div>
+            )}
+          </div>
+        ))}
         {isLoading && (
           <div className={styles.messageWrapper}>
-            <div className={styles.aiMessageFlow}>
-              <div className={styles.typingIndicator}>
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-            </div>
+             <div className={styles.aiMessageFlow}>
+                <div className={styles.typingIndicator}>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+             </div>
           </div>
         )}
         <div ref={chatEndRef} />
       </div>
 
-      <div className={messages.length === 1 ? styles.formCentered : styles.formBottom}>
+      <div className={!isConversationStarted ? styles.formCentered : styles.formBottom}>
         <form onSubmit={handleSendMessage} className={styles.form}>
           <input
             type="text"
@@ -137,13 +143,8 @@ export default function Chatbot() {
           />
           <button type="submit" className={styles.button} disabled={isFormDisabled}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M7 11L12 6L17 11M12 18V7"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+                <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
         </form>
