@@ -14,7 +14,6 @@ const welcomeMessage: Message = {
 }
 
 export default function Chatbot() {
-  // The chat now correctly starts with the welcome message
   const [messages, setMessages] = useState<Message[]>([welcomeMessage])
   const [input, setInput] = useState<string>("")
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -37,7 +36,6 @@ export default function Chatbot() {
     if (!input.trim() || isLoading || !sessionId) return
 
     const userMessage: Message = { text: input, sender: "user" }
-    // Always add the new user message to the history
     setMessages((prev) => [...prev, userMessage])
     
     const currentInput = input
@@ -68,7 +66,6 @@ export default function Chatbot() {
 
   const isFormDisabled = isLoading || !sessionId
   
-  // The form is centered only if the conversation hasn't started yet.
   const isConversationStarted = messages.length > 1;
 
   return (
