@@ -29,7 +29,7 @@
   margin: 0;
   display: inline-flex; /* Use inline-flex for tighter control */
   align-items: center;
-  gap: 0.07rem; /* Reduced gap */
+  gap: 0.0rem; /* Reduced gap */
 }
 
 .dropletLogo {
