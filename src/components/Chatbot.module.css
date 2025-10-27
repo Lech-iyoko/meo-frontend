@@ -16,25 +16,28 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1.5rem 2rem; /* Adjusted padding */
   text-align: center;
-  border-bottom: 1px solid rgba(164, 214, 94, 0.2); /* Added a subtle separator */
+  border-bottom: 1px solid rgba(164, 214, 94, 0.2);
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .greetingText {
-  font-size: 1.5rem; /* Adjusted size for a header */
+  font-size: 1.5rem;
   font-weight: 600;
   color: #ffffff;
   margin: 0;
-  display: flex;
+  display: inline-flex; /* Use inline-flex for tighter control */
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.15rem; /* Reduced gap */
 }
 
 .dropletLogo {
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem; /* Slightly smaller to fit better inline */
+  height: 1.75rem;
   display: inline-block;
+  vertical-align: middle; /* Align vertically with text */
+  margin-bottom: 0.1em; /* Fine-tune vertical alignment */
 }
 
 .chatWindow {
@@ -89,6 +92,10 @@
 .aiMessageContent p {
   margin: 0 0 1em;
 }
+.aiMessageContent p:last-child {
+  margin-bottom: 0; /* Remove extra space after the last paragraph */
+}
+
 
 .aiMessageContent ul,
 .aiMessageContent ol {

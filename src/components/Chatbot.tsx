@@ -6,15 +6,10 @@ import styles from "./Chatbot.module.css"
 import { postChatMessage } from "@/app/lib/api"
 import type { Message } from "@/app/lib/types"
 
-// The welcome message that appears IN the chat window
-const welcomeMessage: Message = {
-  text: "Hi! I'm Meo. Let's get healthy!",
-  sender: "meo",
-  sources: [],
-}
+// No welcome message constant needed, chat starts empty.
 
 export default function Chatbot() {
-  const [messages, setMessages] = useState<Message[]>([welcomeMessage])
+  const [messages, setMessages] = useState<Message[]>([]) // Starts empty
   const [input, setInput] = useState<string>("")
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -28,7 +23,10 @@ export default function Chatbot() {
   }, [])
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    // Scroll down whenever messages change, except for the very first load
+    if (messages.length > 0) {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
   }, [messages])
 
   const handleSendMessage = async (e: FormEvent) => {
@@ -36,8 +34,9 @@ export default function Chatbot() {
     if (!input.trim() || isLoading || !sessionId) return
 
     const userMessage: Message = { text: input, sender: "user" }
+    // Always add the user message
     setMessages((prev) => [...prev, userMessage])
-    
+
     const currentInput = input
     setInput("")
     setIsLoading(true)
@@ -65,18 +64,18 @@ export default function Chatbot() {
   }
 
   const isFormDisabled = isLoading || !sessionId
-  
-  const isConversationStarted = messages.length > 1;
+
+  // The form is centered only if NO messages have been sent yet.
+  const isConversationStarted = messages.length > 0;
 
   return (
     <div className={styles.chatContainer}>
-      {/* --- THIS HEADER IS NOW ALWAYS VISIBLE --- */}
       <div className={styles.headerGreeting}>
         <h1 className={styles.greetingText}>
-          Hi, I&apos;m Me
+          I&apos;m Me
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/droplet-logo.png" alt="O" className={styles.dropletLogo} />
-          . Let&apos;s get healthy!
+          , let&apos;s get healthy!
         </h1>
       </div>
 
