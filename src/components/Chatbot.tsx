@@ -6,10 +6,8 @@ import styles from "./Chatbot.module.css"
 import { postChatMessage } from "@/app/lib/api"
 import type { Message } from "@/app/lib/types"
 
-// No welcome message constant needed, chat starts empty.
-
 export default function Chatbot() {
-  const [messages, setMessages] = useState<Message[]>([]) // Starts empty
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState<string>("")
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -23,9 +21,8 @@ export default function Chatbot() {
   }, [])
 
   useEffect(() => {
-    // Scroll down whenever messages change, except for the very first load
     if (messages.length > 0) {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }
   }, [messages])
 
@@ -34,7 +31,6 @@ export default function Chatbot() {
     if (!input.trim() || isLoading || !sessionId) return
 
     const userMessage: Message = { text: input, sender: "user" }
-    // Always add the user message
     setMessages((prev) => [...prev, userMessage])
 
     const currentInput = input
@@ -51,7 +47,10 @@ export default function Chatbot() {
       }
       setMessages((prev) => [...prev, meoMessage])
     } catch (error) {
-      const errorMessage: Message = { text: "Sorry, I am having trouble connecting. Please try again.", sender: "meo" }
+      const errorMessage: Message = {
+        text: "Sorry, I am having trouble connecting. Please try again.",
+        sender: "meo",
+      }
       setMessages((prev) => [...prev, errorMessage])
       console.error("Failed to send message:", error)
     } finally {
@@ -64,16 +63,13 @@ export default function Chatbot() {
   }
 
   const isFormDisabled = isLoading || !sessionId
-
-  // The form is centered only if NO messages have been sent yet.
-  const isConversationStarted = messages.length > 0;
+  const isConversationStarted = messages.length > 0
 
   return (
     <div className={styles.chatContainer}>
       <div className={styles.headerGreeting}>
         <h1 className={styles.greetingText}>
           I&apos;m Me
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/droplet-logo.png" alt="O" className={styles.dropletLogo} />
           , let&apos;s get healthy!
         </h1>
@@ -92,7 +88,10 @@ export default function Chatbot() {
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
                   {msg.sources && msg.sources.length > 0 && (
                     <div className={styles.sourcesWrapper}>
-                      <button onClick={() => toggleSources(index)} className={styles.sourcesButton}>
+                      <button
+                        onClick={() => toggleSources(index)}
+                        className={styles.sourcesButton}
+                      >
                         Sources ({msg.sources.length})
                       </button>
                       {openSourcesIndex === index && (
@@ -115,13 +114,13 @@ export default function Chatbot() {
         ))}
         {isLoading && (
           <div className={styles.messageWrapper}>
-             <div className={styles.aiMessageFlow}>
-                <div className={styles.typingIndicator}>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-             </div>
+            <div className={styles.aiMessageFlow}>
+              <div className={styles.typingIndicator}>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
           </div>
         )}
         <div ref={chatEndRef} />
@@ -129,18 +128,39 @@ export default function Chatbot() {
 
       <div className={!isConversationStarted ? styles.formCentered : styles.formBottom}>
         <form onSubmit={handleSendMessage} className={styles.form}>
-          <input
-            type="text"
+          <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className={styles.input}
-            placeholder={sessionId ? "Ask a question about metabolic health..." : "Initializing session..."}
+            placeholder={
+              sessionId
+                ? "Ask a question about metabolic health..."
+                : "Initializing session..."
+            }
             disabled={isFormDisabled}
           />
           <button type="submit" className={styles.button} disabled={isFormDisabled}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M22 2L11 13"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M22 2L15 22L11 13L2 9L22 2Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
         </form>

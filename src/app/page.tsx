@@ -1,13 +1,20 @@
-import Chatbot from '../components/Chatbot';
+import Chatbot from "../components/Chatbot";
 
 export default function Home() {
   return (
-    <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem' }}>
-      <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>Meo</h1>
-        <p style={{ fontSize: '1.2rem', color: '#555' }}>Your Metabolic Health AI Assistant</p>
+    <main style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+      {/* Optional */}
+      <div style={{ textAlign: "center", padding: "1rem 0" }}>
+        <h1 style={{ fontSize: "2rem", fontWeight: "bold", margin: 0 }}>Meo</h1>
+        <p style={{ fontSize: "1rem", color: "#ccc", margin: 0 }}>
+          Your Metabolic Health AI Assistant
+        </p>
       </div>
-      <Chatbot />
+
+      {/* Chatbot fills the screen */}
+      <div style={{ flexGrow: 1 }}>
+        <Chatbot />
+      </div>
     </main>
   );
 }
