@@ -58,6 +58,13 @@ export default function Chatbot() {
     }
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage(e as unknown as FormEvent)
+    }
+  }
+
   const toggleSources = (index: number) => {
     setOpenSourcesIndex(openSourcesIndex === index ? null : index)
   }
@@ -131,6 +138,7 @@ export default function Chatbot() {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
             className={styles.input}
             placeholder={
               sessionId
@@ -138,6 +146,7 @@ export default function Chatbot() {
                 : "Initializing session..."
             }
             disabled={isFormDisabled}
+            rows={1}
           />
           <button type="submit" className={styles.button} disabled={isFormDisabled}>
             <svg
