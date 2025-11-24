@@ -6,6 +6,12 @@ import styles from "./Chatbot.module.css"
 import { postChatMessage } from "@/app/lib/api"
 import type { Message } from "@/app/lib/types"
 
+function autoResizeTextarea(el: HTMLTextAreaElement | null) {
+  if (!el) return
+  el.style.height = "auto" // reset
+  el.style.height = `${el.scrollHeight}px` // grow to content (will respect CSS max-height)
+}
+
 export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState<string>("")
@@ -13,6 +19,7 @@ export default function Chatbot() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [openSourcesIndex, setOpenSourcesIndex] = useState<number | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     const storedSessionId = localStorage.getItem("meo-session-id") || crypto.randomUUID()
@@ -25,6 +32,11 @@ export default function Chatbot() {
       chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }
   }, [messages])
+
+  useEffect(() => {
+    // initial sizing if there's prefilled text
+    autoResizeTextarea(inputRef.current)
+  }, [])
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault()
@@ -136,6 +148,7 @@ export default function Chatbot() {
       <div className={!isConversationStarted ? styles.formCentered : styles.formBottom}>
         <form onSubmit={handleSendMessage} className={styles.form}>
           <textarea
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -147,6 +160,7 @@ export default function Chatbot() {
             }
             disabled={isFormDisabled}
             rows={1}
+            onInput={(e) => autoResizeTextarea(e.currentTarget)}
           />
           <button type="submit" className={styles.button} disabled={isFormDisabled}>
             <svg
