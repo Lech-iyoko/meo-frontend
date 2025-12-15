@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useRef, useEffect, FormEvent } from "react"
+import { useState, useEffect, type FormEvent, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import styles from "./Chatbot.module.css"
 import { postChatMessage } from "@/app/lib/api"
-import { Message } from "@/app/lib/types"
+import type { Message } from "@/app/lib/types"
 
 function autoResizeTextarea(el: HTMLTextAreaElement | null) {
   if (!el) return
-  el.style.height = "auto"
-  el.style.height = `${el.scrollHeight}px`
+  el.style.height = "auto" // reset
+  el.style.height = `${el.scrollHeight}px` // grow to content (will respect CSS max-height)
 }
 
 export default function Chatbot() {
@@ -34,6 +34,7 @@ export default function Chatbot() {
   }, [messages])
 
   useEffect(() => {
+    // initial sizing if there's prefilled text
     autoResizeTextarea(inputRef.current)
   }, [])
 
@@ -89,89 +90,35 @@ export default function Chatbot() {
         <span className={styles.limitedPreviewBadge}>Limited Preview</span>
       </div>
 
-      {/* Welcome section with branding and input - like Perplexity */}
-      {!isConversationStarted && (
-        <div className={styles.welcomeSection}>
-          <div className={styles.meoBranding}>
-            <h1 className={styles.meoTitle}>
-              Me<span className={styles.dropletO}>🩸</span>
-            </h1>
-          </div>
-          
-          <form onSubmit={handleSendMessage} className={styles.form}>
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className={styles.input}
-              placeholder={
-                sessionId
-                  ? "Ask a question about metabolic health..."
-                  : "Initializing session..."
-              }
-              disabled={isFormDisabled}
-              rows={1}
-              onInput={(e) => autoResizeTextarea(e.currentTarget)}
-            />
-            <button type="submit" className={styles.button} disabled={isFormDisabled}>
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M22 2L11 13"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M22 2L15 22L11 13L2 9L22 2Z"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </form>
-        </div>
-      )}
+      {/* Centered MeO branding - fades out when conversation starts */}
+      <div className={`${styles.meoBranding} ${isConversationStarted ? styles.meoBrandingHidden : ''}`}>
+        <h1 className={styles.meoTitle}>
+          Me
+          <img src="/droplet-logo.png" alt="O" className={styles.dropletLogo} />
+        </h1>
+      </div>
 
-      {/* Chat window - only shown after conversation starts */}
-      {isConversationStarted && (
-        <>
-          <div className={styles.chatWindow}>
-            {messages.map((msg, index) => (
-              <div key={index} className={styles.messageWrapper}>
-                {msg.sender === "user" ? (
-                  <div className={styles.userMessageBubble}>
-                    <ReactMarkdown>{msg.text}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <div className={styles.aiMessageFlow}>
-                    <div className={styles.aiMessageContent}>
-                      <ReactMarkdown>{msg.text}</ReactMarkdown>
-                    </div>
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className={styles.sourcesSection}>
-                        <button
-                          className={styles.sourcesToggle}
-                          onClick={() => toggleSources(index)}
-                          aria-expanded={openSourcesIndex === index}
-                        >
-                          Sources ({msg.sources.length})
-                          <span
-                            className={`${styles.chevron} ${openSourcesIndex === index ? styles.chevronOpen : ""}`}
-                          >
-                            ▼
-                          </span>
-                        </button>
-                        {openSourcesIndex === index && (
+      <div className={styles.chatWindow}>
+        {messages.map((msg, index) => (
+          <div key={index} className={styles.messageWrapper}>
+            {msg.sender === "user" ? (
+              <div className={styles.userMessageBubble}>
+                <ReactMarkdown>{msg.text}</ReactMarkdown>
+              </div>
+            ) : (
+              <div className={styles.aiMessageFlow}>
+                <div className={styles.aiMessageContent}>
+                  <ReactMarkdown>{msg.text}</ReactMarkdown>
+                  {msg.sources && msg.sources.length > 0 && (
+                    <div className={styles.sourcesWrapper}>
+                      <button
+                        onClick={() => toggleSources(index)}
+                        className={styles.sourcesButton}
+                      >
+                        Sources ({msg.sources.length})
+                      </button>
+                      {openSourcesIndex === index && (
+                        <div className={styles.sourcesContainer}>
                           <ul className={styles.sourcesList}>
                             {msg.sources.map((source, idx) => (
                               <li key={idx} className={styles.sourceItem}>
@@ -179,68 +126,72 @@ export default function Chatbot() {
                               </li>
                             ))}
                           </ul>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-            {isLoading && (
-              <div className={styles.messageWrapper}>
-                <div className={styles.aiMessageFlow}>
-                  <div className={styles.typingIndicator}>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
-            <div ref={chatEndRef} />
           </div>
+        ))}
+        {isLoading && (
+          <div className={styles.messageWrapper}>
+            <div className={styles.aiMessageFlow}>
+              <div className={styles.typingIndicator}>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
 
-          {/* Bottom input form - after conversation starts */}
-          <div className={styles.formBottom}>
-            <form onSubmit={handleSendMessage} className={styles.form}>
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className={styles.input}
-                placeholder="Ask a follow-up question..."
-                disabled={isFormDisabled}
-                rows={1}
-                onInput={(e) => autoResizeTextarea(e.currentTarget)}
+      <div className={!isConversationStarted ? styles.formCentered : styles.formBottom}>
+        <form onSubmit={handleSendMessage} className={styles.form}>
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className={styles.input}
+            placeholder={
+              sessionId
+                ? "Ask a question about metabolic health..."
+                : "Initializing session..."
+            }
+            disabled={isFormDisabled}
+            rows={1}
+            onInput={(e) => autoResizeTextarea(e.currentTarget)}
+          />
+          <button type="submit" className={styles.button} disabled={isFormDisabled}>
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M22 2L11 13"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-              <button type="submit" className={styles.button} disabled={isFormDisabled}>
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M22 2L11 13"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M22 2L15 22L11 13L2 9L22 2Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            </form>
-          </div>
-        </>
-      )}
+              <path
+                d="M22 2L15 22L11 13L2 9L22 2Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
