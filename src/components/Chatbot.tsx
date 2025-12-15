@@ -86,11 +86,15 @@ export default function Chatbot() {
 
   return (
     <div className={styles.chatContainer}>
-      <div className={styles.headerGreeting}>
-        <h1 className={styles.greetingText}>
-          I&apos;m Me
+      <div className={styles.headerBadge}>
+        <span className={styles.limitedPreviewBadge}>Limited Preview</span>
+      </div>
+
+      {/* Centered MeO branding - fades out when conversation starts */}
+      <div className={`${styles.meoBranding} ${isConversationStarted ? styles.meoBrandingHidden : ''}`}>
+        <h1 className={styles.meoTitle}>
+          Me
           <img src="/droplet-logo.png" alt="O" className={styles.dropletLogo} />
-          , let&apos;s get healthy!
         </h1>
       </div>
 

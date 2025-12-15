@@ -15,24 +15,55 @@
   box-shadow: none;
 }
 
-.headerGreeting {
+.headerBadge {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem 2rem;
-  text-align: center;
-  border-bottom: 1px solid rgba(164, 214, 94, 0.2);
+  padding: 1rem 2rem;
   flex-shrink: 0;
 }
 
-.greetingText {
-  font-size: 1.5rem;
+.limitedPreviewBadge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(164, 214, 94, 0.8);
+  background-color: rgba(164, 214, 94, 0.1);
+  border: 1px solid rgba(164, 214, 94, 0.3);
+  padding: 0.375rem 0.875rem;
+  border-radius: 20px;
+  letter-spacing: 0.025em;
+}
+
+.meoBranding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.meoBrandingHidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-20px);
+  pointer-events: none;
+}
+
+.meoTitle {
+  font-size: 2.5rem;
   font-weight: 600;
   color: #ffffff;
   margin: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.0rem;
+  gap: 0;
 }
 
 .dropletLogo {
@@ -51,6 +82,9 @@
   flex-direction: column;
   gap: 1.5rem;
   padding-bottom: 120px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .messageWrapper {
@@ -61,7 +95,7 @@
 
 .userMessageBubble {
   align-self: flex-end;
-  max-width: 70%;
+  max-width: 85%;
   background: rgba(164, 214, 94, 0.15);
   border: 1px solid rgba(164, 214, 94, 0.3);
   border-radius: 18px 18px 4px 18px;
@@ -74,7 +108,7 @@
 .aiMessageFlow {
   align-self: flex-start;
   width: 100%;
-  max-width: 90%;
+  max-width: 100%;
 }
 
 .aiMessageContent {
@@ -275,12 +309,20 @@
 }
 
 @media (max-width: 768px) {
-  .greetingText {
-    font-size: 1.25rem;
+  .meoTitle {
+    font-size: 2rem;
   }
 
   .dropletLogo {
     width: 1.5rem;
     height: 1.5rem;
+  }
+
+  .meoBranding {
+    top: 30%;
+  }
+
+  .chatWindow {
+    padding: 1rem;
   }
 }

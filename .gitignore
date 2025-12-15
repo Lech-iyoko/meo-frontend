@@ -50,3 +50,9 @@ __pycache__/
 
 # Logs
 *.log
+
+# Screenshots
+Screenshots/
+
+# Context
+context.txt
