@@ -67,11 +67,12 @@
 }
 
 .dropletLogo {
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
   display: inline-block;
   vertical-align: middle;
   margin-bottom: 0.1em;
+  margin-left: -0.3rem;
 }
 
 .chatWindow {
