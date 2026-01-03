@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Droplet, Moon, Sun, ShieldCheck, Activity, User, Upload, ChevronRight, Sparkles } from 'lucide-react';
+import { Send, Droplet, Moon, Sun, ShieldCheck, User, Upload, ChevronRight, Sparkles } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -50,45 +50,48 @@ export default function MeOInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Track if conversation has started
+  const hasMessages = messages.length > 0;
+
   // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // --- Theme Classes ---
+  // --- Theme Classes (matching current MeO UI) ---
   const theme = {
-    // Backgrounds
+    // Backgrounds - solid dark teal like current MeO UI
     pageBg: isDarkMode 
-      ? "bg-gradient-to-br from-[#0f2922] via-[#1a3c34] to-[#0f2922]" 
-      : "bg-gradient-to-br from-slate-50 via-white to-slate-100",
+      ? "bg-[#1a3c34]" 
+      : "bg-slate-50",
     
     // Text
     textPrimary: isDarkMode ? "text-white" : "text-slate-900",
-    textSecondary: isDarkMode ? "text-teal-200/70" : "text-slate-500",
+    textSecondary: isDarkMode ? "text-teal-200/80" : "text-slate-500",
     textMuted: isDarkMode ? "text-teal-300/50" : "text-slate-400",
     
     // Cards & Panels
     card: isDarkMode 
-      ? "bg-[#112922]/80 border-teal-800/30 backdrop-blur-sm" 
+      ? "bg-[#112922] border-teal-800/50" 
       : "bg-white border-slate-200 shadow-lg",
     cardHover: isDarkMode 
-      ? "hover:bg-[#1a3c34] hover:border-teal-700/50" 
+      ? "hover:bg-[#163029] hover:border-teal-700/50" 
       : "hover:shadow-xl hover:border-slate-300",
     
-    // Input
+    // Input - dark input like current MeO
     input: isDarkMode 
-      ? "bg-[#0f241e]/80 border-teal-800/50 placeholder-teal-600 text-white focus:border-teal-500" 
+      ? "bg-[#112922] border-teal-700/50 placeholder-teal-500/70 text-white focus:border-teal-500" 
       : "bg-white border-slate-200 placeholder-slate-400 text-slate-900 focus:border-teal-500",
     
     // Bubbles
     userBubble: "bg-teal-500 text-white",
     botBubble: isDarkMode 
-      ? "bg-black/20 text-teal-50 border border-teal-800/30" 
+      ? "bg-[#112922] text-teal-50 border border-teal-800/50" 
       : "bg-white text-slate-800 border border-slate-200 shadow-sm",
     
     // Buttons
     chipButton: isDarkMode 
-      ? "border-teal-700/50 text-teal-300 hover:bg-teal-900/50 hover:border-teal-600" 
+      ? "border-teal-600/50 text-teal-300 hover:bg-teal-800/30 hover:border-teal-500" 
       : "border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300",
     
     // Tags
@@ -142,7 +145,7 @@ export default function MeOInterface() {
       console.error(err);
       setMessages(prev => [...prev, { 
         role: 'bot', 
-        content: "I'm having trouble connecting. Please ensure the backend is running at localhost:8000.", 
+        content: "I'm having trouble connecting. Please check your internet connection or try again later.", 
         timestamp: new Date() 
       }]);
     } finally {
@@ -154,78 +157,137 @@ export default function MeOInterface() {
     handleSendMessage(undefined, text);
   };
 
-  // --- Render: Reactive (Initial Centered State) ---
-  const renderReactiveState = () => (
-    <div className="flex-1 flex flex-col items-center justify-center px-6">
+  // --- Render: Chat Messages ---
+  const renderMessages = () => (
+    <>
+      {messages.map((msg, i) => (
+        <div key={i} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
+          <div className={cn(
+            "max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed",
+            msg.role === 'user' ? theme.userBubble : theme.botBubble
+          )}>
+            {msg.content}
+          </div>
+        </div>
+      ))}
+      {loading && (
+        <div className="flex justify-start">
+          <div className={cn("px-4 py-3 rounded-2xl text-sm", theme.botBubble)}>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <span className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                <span className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                <span className="w-2 h-2 bg-teal-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <div ref={messagesEndRef} />
+    </>
+  );
+
+  // --- Render: Initial Welcome (before any messages) ---
+  const renderWelcome = () => (
+    <div className="flex flex-col items-center justify-center flex-1">
       {/* Logo */}
       <div className="flex items-center gap-1 mb-3">
         <span className={cn("text-5xl font-bold tracking-tight", theme.textPrimary)}>Me</span>
-        <Droplet className="w-10 h-10 fill-teal-500 text-teal-500" strokeWidth={1.5} />
+        <Droplet className="w-10 h-10 fill-teal-400 text-teal-400" strokeWidth={1.5} />
       </div>
       
       {/* Tagline */}
-      <p className={cn("text-lg mb-10", theme.textSecondary)}>
+      <p className={cn("text-lg mb-8", theme.textSecondary)}>
         Your Metabolic Health Partner
       </p>
-      
-      {/* Search Input */}
-      <form onSubmit={handleSendMessage} className="w-full max-w-2xl mb-6">
-        <div className="relative">
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Ask about your metabolic health..."
-            className={cn(
-              "w-full py-4 pl-5 pr-14 rounded-2xl border-2 transition-all duration-300",
-              "focus:outline-none focus:ring-4 focus:ring-teal-500/20",
-              theme.input
-            )}
-          />
-          <button 
-            type="submit"
-            disabled={!input.trim()}
-            className={cn(
-              "absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all duration-200",
-              input.trim() 
-                ? "bg-teal-500 text-white hover:bg-teal-400 shadow-lg shadow-teal-500/25" 
-                : "bg-transparent text-gray-400 cursor-not-allowed"
-            )}
-          >
-            <Send size={18} />
-          </button>
-        </div>
+    </div>
+  );
+
+  // --- Render: Input Area ---
+  const renderInputArea = (isCentered: boolean = false) => (
+    <div className={cn(
+      "w-full",
+      isCentered ? "max-w-2xl mx-auto px-6" : ""
+    )}>
+      <form onSubmit={handleSendMessage} className="relative">
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder="Ask about your metabolic health..."
+          className={cn(
+            "w-full py-4 pl-5 pr-14 rounded-2xl border-2 transition-all duration-300",
+            "focus:outline-none focus:ring-4 focus:ring-teal-500/20",
+            theme.input
+          )}
+        />
+        <button 
+          type="submit"
+          disabled={!input.trim()}
+          className={cn(
+            "absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all duration-200",
+            input.trim() 
+              ? "bg-teal-500 text-white hover:bg-teal-400 shadow-lg shadow-teal-500/25" 
+              : "bg-teal-700/30 text-teal-500/50 cursor-not-allowed"
+          )}
+        >
+          <Send size={18} />
+        </button>
       </form>
       
-      {/* Action Chips */}
-      <div className="flex flex-wrap gap-3 justify-center">
-        <button 
-          onClick={() => handleChipClick("Analyze my Kraft Curve")}
-          className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-medium transition-all duration-200",
-            theme.chipButton
-          )}
-        >
-          <Sparkles size={16} /> Analyze my Kraft Curve
-        </button>
-        <button 
-          onClick={() => handleChipClick("Find a Specialist for metabolic health")}
-          className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-medium transition-all duration-200",
-            theme.chipButton
-          )}
-        >
-          <User size={16} /> Find a Specialist
-        </button>
-        <button 
-          onClick={() => handleChipClick("I want to upload my lab results")}
-          className={cn(
-            "flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-medium transition-all duration-200",
-            theme.chipButton
-          )}
-        >
-          <Upload size={16} /> Upload Lab Results
-        </button>
+      {/* Action Chips - only show before conversation starts */}
+      {!hasMessages && (
+        <div className="flex flex-wrap gap-3 justify-center mt-6">
+          <button 
+            onClick={() => handleChipClick("Analyze my Kraft Curve")}
+            className={cn(
+              "flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-medium transition-all duration-200",
+              theme.chipButton
+            )}
+          >
+            <Sparkles size={16} /> Analyze my Kraft Curve
+          </button>
+          <button 
+            onClick={() => handleChipClick("Find a Specialist for metabolic health")}
+            className={cn(
+              "flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-medium transition-all duration-200",
+              theme.chipButton
+            )}
+          >
+            <User size={16} /> Find a Specialist
+          </button>
+          <button 
+            onClick={() => handleChipClick("I want to upload my lab results")}
+            className={cn(
+              "flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-medium transition-all duration-200",
+              theme.chipButton
+            )}
+          >
+            <Upload size={16} /> Upload Lab Results
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  // --- Render: Reactive State (Centered Layout) ---
+  const renderReactiveLayout = () => (
+    <div className="flex-1 flex flex-col h-full max-w-3xl mx-auto w-full px-6 py-6">
+      {/* Welcome or Messages */}
+      {!hasMessages ? (
+        renderWelcome()
+      ) : (
+        <div className="flex-1 overflow-y-auto space-y-4 mb-6">
+          {renderMessages()}
+        </div>
+      )}
+      
+      {/* Input Area */}
+      <div className={cn(
+        "transition-all duration-500",
+        !hasMessages ? "mt-auto" : ""
+      )}>
+        {renderInputArea(!hasMessages)}
       </div>
     </div>
   );
@@ -236,7 +298,7 @@ export default function MeOInterface() {
       {/* LEFT: Chat Panel (30%) */}
       <div className={cn(
         "w-full lg:w-[30%] flex flex-col border-r transition-all duration-500",
-        isDarkMode ? "border-teal-800/30 bg-[#0f2922]/50" : "border-slate-200 bg-white"
+        isDarkMode ? "border-teal-800/30 bg-[#163029]" : "border-slate-200 bg-white"
       )}>
         {/* Chat Header */}
         <div className={cn(
@@ -245,7 +307,7 @@ export default function MeOInterface() {
         )}>
           <div className="flex items-center gap-2">
             <span className={cn("text-lg font-semibold", theme.textPrimary)}>Me</span>
-            <Droplet className="w-4 h-4 fill-teal-500 text-teal-500" />
+            <Droplet className="w-4 h-4 fill-teal-400 text-teal-400" />
           </div>
           <button 
             onClick={() => handleChipClick("Find a Specialist")}
@@ -257,24 +319,7 @@ export default function MeOInterface() {
         
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((msg, i) => (
-            <div key={i} className={cn("flex", msg.role === 'user' ? "justify-end" : "justify-start")}>
-              <div className={cn(
-                "max-w-[90%] px-4 py-3 rounded-2xl text-sm leading-relaxed",
-                msg.role === 'user' ? theme.userBubble : theme.botBubble
-              )}>
-                {msg.content}
-              </div>
-            </div>
-          ))}
-          {loading && (
-            <div className="flex justify-start">
-              <div className={cn("px-4 py-2 rounded-full text-xs", theme.textMuted)}>
-                <span className="animate-pulse">MeO is analyzing...</span>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
+          {renderMessages()}
         </div>
         
         {/* Input */}
@@ -295,7 +340,7 @@ export default function MeOInterface() {
               disabled={!input.trim()}
               className={cn(
                 "absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-all",
-                input.trim() ? "bg-teal-500 text-white hover:bg-teal-400" : "text-gray-400"
+                input.trim() ? "bg-teal-500 text-white hover:bg-teal-400" : "text-teal-500/50"
               )}
             >
               <Send size={16} />
@@ -307,7 +352,7 @@ export default function MeOInterface() {
       {/* RIGHT: Morph Panel (70%) */}
       <div className={cn(
         "hidden lg:flex lg:w-[70%] flex-col overflow-hidden",
-        isDarkMode ? "bg-[#112922]/30" : "bg-slate-50"
+        isDarkMode ? "bg-[#112922]" : "bg-slate-50"
       )}>
         {/* Tabs */}
         <div className={cn(
@@ -481,13 +526,12 @@ export default function MeOInterface() {
     )}>
       {/* --- HEADER --- */}
       <header className={cn(
-        "shrink-0 px-6 py-4 flex items-center justify-between border-b transition-colors",
-        isDarkMode ? "border-teal-800/30 bg-[#0f2922]/80" : "border-slate-200 bg-white/80",
-        "backdrop-blur-md"
+        "shrink-0 px-6 py-4 flex items-center justify-between",
+        isDarkMode ? "bg-[#1a3c34]" : "bg-white border-b border-slate-200"
       )}>
         <div className="flex items-center gap-2">
           <span className={cn("text-xl font-bold tracking-tight", theme.textPrimary)}>Me</span>
-          <Droplet className="w-5 h-5 fill-teal-500 text-teal-500" />
+          <Droplet className="w-5 h-5 fill-teal-400 text-teal-400" />
         </div>
         
         <div className="flex items-center gap-3">
@@ -506,7 +550,7 @@ export default function MeOInterface() {
           <div className={cn(
             "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border",
             isDarkMode 
-              ? "bg-teal-900/30 border-teal-700/50 text-teal-400" 
+              ? "bg-teal-800/30 border-teal-700/50 text-teal-400" 
               : "bg-teal-50 border-teal-100 text-teal-700"
           )}>
             <ShieldCheck size={14} />
@@ -516,11 +560,8 @@ export default function MeOInterface() {
       </header>
 
       {/* --- MAIN CONTENT --- */}
-      <main className={cn(
-        "flex-1 flex overflow-hidden transition-all duration-700",
-        phase === 'reactive' ? '' : ''
-      )}>
-        {phase === 'reactive' ? renderReactiveState() : renderSplitLayout()}
+      <main className="flex-1 flex overflow-hidden transition-all duration-700">
+        {phase === 'reactive' ? renderReactiveLayout() : renderSplitLayout()}
       </main>
     </div>
   );
