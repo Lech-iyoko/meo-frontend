@@ -48,48 +48,57 @@
 }
 
 .dark {
-  /* Dark mode - deep teal with lime-green accents from MeO brand */
-  --background: oklch(0.25 0.04 200);
+  /* Dark mode - deep teal/emerald gradient with lime-green accents from MeO brand */
+  /* Base: Deep teal #1a3a3a → Mid: #1e4444 → Lighter accent: #2a5555 */
+  --background: #1a3a3a;
   --foreground: oklch(0.95 0.01 180);
 
-  --medical-bg: oklch(0.28 0.04 195);
-  --medical-accent: oklch(0.32 0.05 190);
+  /* Gradient stops for depth - darker to lighter teal */
+  --medical-bg: #1e4444;
+  --medical-accent: #2a5555;
+  --medical-gradient-start: #1a3a3a;
+  --medical-gradient-mid: #1e4444;
+  --medical-gradient-end: #2a5555;
 
   /* Lime-green accent matching MeO brand */
-  --medical-primary: oklch(0.75 0.18 130);
-  --medical-primary-dark: oklch(0.65 0.16 130);
-  --medical-border: oklch(0.35 0.03 195);
+  --medical-primary: #a4d65e;
+  --medical-primary-dark: #8bc34a;
+  --medical-border: rgba(255, 255, 255, 0.12);
 
-  --card: oklch(0.28 0.04 195);
+  /* Card with subtle transparency for glassmorphism */
+  --card: rgba(30, 68, 68, 0.6);
   --card-foreground: oklch(0.95 0.01 180);
 
-  --popover: oklch(0.28 0.04 195);
+  --popover: rgba(26, 58, 58, 0.95);
   --popover-foreground: oklch(0.95 0.01 180);
 
-  --primary: oklch(0.75 0.18 130);
-  --primary-foreground: oklch(0.15 0.02 200);
+  --primary: #a4d65e;
+  --primary-foreground: #1a3a3a;
 
-  --secondary: oklch(0.32 0.05 190);
+  --secondary: rgba(42, 85, 85, 0.5);
   --secondary-foreground: oklch(0.95 0.01 180);
 
-  --muted: oklch(0.32 0.05 190);
-  --muted-foreground: oklch(0.65 0.02 190);
+  --muted: rgba(42, 85, 85, 0.4);
+  --muted-foreground: rgba(255, 255, 255, 0.6);
 
-  --accent: oklch(0.32 0.05 190);
+  --accent: rgba(42, 85, 85, 0.5);
   --accent-foreground: oklch(0.95 0.01 180);
 
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.95 0.01 180);
 
-  --border: oklch(0.35 0.03 195);
-  --input: oklch(0.35 0.03 195);
-  --ring: oklch(0.75 0.18 130);
+  --border: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #a4d65e;
 
-  --chart-1: oklch(0.75 0.18 130);
-  --chart-2: oklch(0.65 0.16 130);
-  --chart-3: oklch(0.55 0.14 130);
-  --chart-4: oklch(0.8 0.2 130);
-  --chart-5: oklch(0.7 0.17 120);
+  /* Chart colors - integrated with theme */
+  --chart-glucose: #5eead4; /* Teal for glucose */
+  --chart-insulin: #fbbf24; /* Amber for insulin */
+  --chart-1: #a4d65e;
+  --chart-2: #5eead4;
+  --chart-3: #fbbf24;
+  --chart-4: #38bdf8;
+  --chart-5: #a78bfa;
 }
 
 @theme inline {
