@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Moon, Sun, ChevronRight, Activity, Stethoscope, Upload } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Send, ChevronRight, Activity, Stethoscope, Upload } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -12,14 +14,24 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 // --- Types ---
+type Phase = 'reactive' | 'analysis' | 'solution';
+
 type Source = {
   title: string;
   category: string;
   description?: string;
   price?: string;
   gap_solved?: string;
-  type: 'vendor_card' | 'content';
+  type: 'vendor_card' | 'content' | 'graph_data';
   tags?: string[];
+};
+
+type GraphDataPoint = {
+  time: string;
+  glucose: number;
+  insulin: number;
+  Glucose?: number;
+  Insulin?: number;
 };
 
 type Message = {
@@ -28,39 +40,31 @@ type Message = {
   timestamp: Date;
 };
 
-// --- Mock Data for the Kraft Curve Analysis ---
-const GLUCOSE_INSULIN_DATA = [
-  { time: '0 min', glucose: 85, insulin: 5 },
-  { time: '15 min', glucose: 120, insulin: 45 },
-  { time: '30 min', glucose: 145, insulin: 85 },
-  { time: '45 min', glucose: 155, insulin: 95 },
-  { time: '60 min', glucose: 140, insulin: 75 },
-  { time: '90 min', glucose: 110, insulin: 45 },
-  { time: '120 min', glucose: 95, insulin: 25 },
-  { time: '150 min', glucose: 90, insulin: 15 },
-  { time: '180 min', glucose: 88, insulin: 8 },
+// --- Default Mock Data for the Kraft Curve Analysis ---
+const DEFAULT_GRAPH_DATA: GraphDataPoint[] = [
+  { time: '0hr', glucose: 85, insulin: 5, Glucose: 85, Insulin: 5 },
+  { time: '0.5hr', glucose: 140, insulin: 80, Glucose: 140, Insulin: 80 },
+  { time: '1hr', glucose: 160, insulin: 120, Glucose: 160, Insulin: 120 },
+  { time: '1.5hr', glucose: 130, insulin: 100, Glucose: 130, Insulin: 100 },
+  { time: '2hr', glucose: 105, insulin: 75, Glucose: 105, Insulin: 75 },
+  { time: '2.5hr', glucose: 90, insulin: 55, Glucose: 90, Insulin: 55 },
+  { time: '3hr', glucose: 95, insulin: 45, Glucose: 95, Insulin: 45 },
+  { time: '3.5hr', glucose: 95, insulin: 35, Glucose: 95, Insulin: 35 },
+  { time: '4hr', glucose: 95, insulin: 25, Glucose: 95, Insulin: 25 },
+  { time: '4.5hr', glucose: 95, insulin: 18, Glucose: 95, Insulin: 18 },
+  { time: '5hr', glucose: 90, insulin: 10, Glucose: 90, Insulin: 10 },
 ];
 
 export default function MeOInterface() {
   // --- State ---
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [phase, setPhase] = useState<Phase>('reactive');
   const [isActive, setIsActive] = useState(false);
-  const [activeTab, setActiveTab] = useState<'analysis' | 'solutions'>('analysis');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [vendors, setVendors] = useState<Source[]>([]);
+  const [graphData, setGraphData] = useState<GraphDataPoint[]>(DEFAULT_GRAPH_DATA);
+  const [vendorData, setVendorData] = useState<Source | null>(null);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Apply theme class to document
-  useEffect(() => {
-    const html = document.documentElement;
-    if (isDarkMode) {
-      html.classList.add('dark');
-    } else {
-      html.classList.remove('dark');
-    }
-  }, [isDarkMode]);
 
   // Auto-scroll
   useEffect(() => {
@@ -88,24 +92,29 @@ export default function MeOInterface() {
       const data = await res.json();
       const botResponse = data.response;
       
-      // State Machine Logic
-      const foundVendors = data.retrieved_sources?.filter((s: Source) => s.type === 'vendor_card') || [];
+      // Backend-driven State Machine Logic - Trust backend tags only
+      const retrievedSources = data.retrieved_sources || [];
       
-      if (foundVendors.length > 0) {
-        setVendors(foundVendors);
-        setActiveTab('solutions');
-      } else if (
-        botResponse.toLowerCase().includes("graph") || 
-        botResponse.toLowerCase().includes("chart") || 
-        botResponse.toLowerCase().includes("crash") ||
-        botResponse.toLowerCase().includes("spike") ||
-        botResponse.toLowerCase().includes("curve") ||
-        botResponse.toLowerCase().includes("pattern") ||
-        botResponse.toLowerCase().includes("kraft") ||
-        botResponse.toLowerCase().includes("glucose") ||
-        botResponse.toLowerCase().includes("insulin")
-      ) {
-        setActiveTab('analysis');
+      for (const source of retrievedSources) {
+        if (source.type === 'graph_data') {
+          // Set phase to analysis and parse graph data
+          setPhase('analysis');
+          if (source.gap_solved) {
+            try {
+              const parsedData = JSON.parse(source.gap_solved);
+              if (Array.isArray(parsedData)) {
+                setGraphData(parsedData);
+              }
+            } catch {
+              // If parsing fails, keep default graph data
+              console.warn('Failed to parse graph data, using defaults');
+            }
+          }
+        } else if (source.type === 'vendor_card') {
+          // Set phase to solution and store vendor data
+          setPhase('solution');
+          setVendorData(source);
+        }
       }
 
       setMessages(prev => [...prev, { role: 'bot', content: botResponse, timestamp: new Date() }]);
@@ -126,20 +135,24 @@ export default function MeOInterface() {
     handleSendMessage(undefined, text);
   };
 
-  // --- Theme Toggle Button ---
-  const ThemeToggle = () => (
-    <button
-      onClick={() => setIsDarkMode(!isDarkMode)}
-      className="fixed top-4 right-4 z-50 p-2 rounded-lg bg-background/80 backdrop-blur border border-medical-border hover:bg-medical-accent transition-colors"
-      aria-label="Toggle theme"
-    >
-      {isDarkMode ? (
-        <Sun className="h-5 w-5 text-medical-primary" />
-      ) : (
-        <Moon className="h-5 w-5 text-medical-primary" />
-      )}
-    </button>
-  );
+  // --- Status Badge Component ---
+  const StatusBadge = () => {
+    const statusConfig = {
+      reactive: { label: 'Reactive', color: 'bg-gray-500/20 text-gray-300 border-gray-500/30' },
+      analysis: { label: 'Analysis', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+      solution: { label: 'Solution', color: 'bg-medical-primary/20 text-medical-primary border-medical-primary/30' },
+    };
+    const config = statusConfig[phase];
+    
+    return (
+      <div className={cn(
+        "px-4 py-2 rounded-full text-sm font-medium border transition-all duration-300",
+        config.color
+      )}>
+        Status: {config.label}
+      </div>
+    );
+  };
 
   // --- Blood Droplet SVG Component ---
   const BloodDroplet = ({ className }: { className?: string }) => (
@@ -173,9 +186,7 @@ export default function MeOInterface() {
   // --- Render: Initial State (View 1) ---
   if (!isActive) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-medical-bg to-medical-accent/10 flex items-center justify-center p-4">
-        <ThemeToggle />
-
+      <div className="min-h-screen dark bg-gradient-to-br from-background via-medical-bg to-medical-accent/10 flex items-center justify-center p-4">
         <div className="w-full max-w-2xl mx-auto">
           {/* Logo & Tagline */}
           <div className="text-center mb-8">
@@ -235,14 +246,13 @@ export default function MeOInterface() {
 
   // --- Render: Active State - Split Screen (View 2) ---
   return (
-    <div className="h-screen flex bg-gradient-to-br from-background via-medical-bg to-medical-accent/10">
-      <ThemeToggle />
-
+    <div className="h-screen dark flex bg-gradient-to-br from-background via-medical-bg to-medical-accent/10">
       {/* Left Panel - Chat Thread */}
       <div className="w-full md:w-[30%] border-r border-medical-border bg-card/50 backdrop-blur flex flex-col">
         {/* Chat Header */}
-        <div className="p-4 border-b border-medical-border bg-card/80">
+        <div className="p-4 border-b border-medical-border bg-card/80 flex items-center justify-between">
           <Logo size="small" />
+          <StatusBadge />
         </div>
 
         {/* Messages */}
@@ -255,7 +265,15 @@ export default function MeOInterface() {
                   ? "bg-medical-primary text-primary-foreground"
                   : "bg-card border border-medical-border text-card-foreground"
               )}>
-                <p className="text-sm leading-relaxed">{msg.content}</p>
+                {msg.role === 'bot' ? (
+                  <div className="text-sm leading-relaxed prose prose-invert prose-sm max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="text-sm leading-relaxed">{msg.content}</p>
+                )}
               </div>
             </div>
           ))}
@@ -293,135 +311,185 @@ export default function MeOInterface() {
         </div>
       </div>
 
-      {/* Right Panel - Workspace with Tabs */}
+      {/* Right Panel - The Morph Area */}
       <div className="hidden md:flex flex-1 flex-col p-6 overflow-hidden">
-        {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-card border border-medical-border rounded-lg w-fit mb-6">
-          <button
-            onClick={() => setActiveTab('analysis')}
-            className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all",
-              activeTab === 'analysis'
-                ? "bg-medical-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-medical-accent"
-            )}
-          >
-            Analysis
-          </button>
-          <button
-            onClick={() => setActiveTab('solutions')}
-            className={cn(
-              "px-4 py-2 rounded-md text-sm font-medium transition-all",
-              activeTab === 'solutions'
-                ? "bg-medical-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-medical-accent"
-            )}
-          >
-            Solutions
-          </button>
+        {/* Header with Title and Status */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-foreground">Meterbolic</h2>
+          <StatusBadge />
         </div>
 
-        {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto">
-          {activeTab === 'analysis' ? (
-            // Analysis Tab
-            <div className="bg-card border border-medical-border rounded-xl p-6 shadow-lg">
-              <h3 className="text-2xl font-bold text-foreground mb-2">Kraft Curve Analysis</h3>
-              <p className="text-muted-foreground mb-6">Glucose & Insulin Response Over Time</p>
+        {/* Morph Content Area with Transitions */}
+        <div className="flex-1 overflow-y-auto transition-all duration-500 ease-in-out">
+          {phase === 'analysis' ? (
+            // Analysis Phase - AG Dashboard
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-right duration-500">
+              {/* Card A: Metabolic Analysis */}
+              <div className="bg-card border border-medical-border rounded-xl p-6 shadow-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground">Metabolic Analysis</h3>
+                    <p className="text-sm text-muted-foreground">Based on your latest data</p>
+                  </div>
+                  {/* Risk Score Badge */}
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Risk Score</p>
+                      <p className="text-2xl font-bold text-foreground">65</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-orange-500/20 border-2 border-orange-500 flex items-center justify-center">
+                      <svg className="w-6 h-6 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C12 2 5 10 5 15C5 19.4183 8.13401 23 12 23C15.866 23 19 19.4183 19 15C19 10 12 2 12 2Z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
 
-              <div className="h-[400px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={GLUCOSE_INSULIN_DATA}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-medical-border" />
-                    <XAxis 
-                      dataKey="time" 
-                      tick={{ fill: 'var(--color-muted-foreground)', fontSize: 12 }}
-                      axisLine={{ stroke: 'var(--color-medical-border)' }}
-                    />
-                    <YAxis 
-                      tick={{ fill: 'var(--color-muted-foreground)', fontSize: 12 }}
-                      axisLine={{ stroke: 'var(--color-medical-border)' }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--color-card)',
-                        border: '1px solid var(--color-medical-border)',
-                        borderRadius: '8px',
-                        color: 'var(--color-card-foreground)',
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="glucose"
-                      stroke="var(--color-medical-primary)"
-                      strokeWidth={3}
-                      name="Glucose (mg/dL)"
-                      dot={{ fill: 'var(--color-medical-primary)', r: 4 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="insulin"
-                      stroke="var(--color-medical-primary-dark)"
-                      strokeWidth={3}
-                      name="Insulin (μIU/mL)"
-                      dot={{ fill: 'var(--color-medical-primary-dark)', r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                {/* Risk Status Pill */}
+                <div className="mb-4">
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                    At Risk
+                  </span>
+                </div>
+
+                {/* Analysis Text */}
+                <div className="bg-medical-accent/50 rounded-lg p-4 border border-medical-border">
+                  <p className="text-sm text-foreground leading-relaxed">
+                    Your metabolic recovery score is currently at <strong>72/100</strong>. Based on your 
+                    HRV data and glucose variability, your body is showing moderate stress response. 
+                    Key factors: sleep efficiency was <strong>84%</strong>, glycemic variability index 
+                    was elevated at <strong>28%</strong>, and your morning cortisol pattern suggests 
+                    adrenal fatigue. Consider implementing the morning light exposure protocol to 
+                    optimize circadian rhythm.
+                  </p>
+                </div>
               </div>
 
-              {/* Stats Cards */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-medical-accent rounded-lg border border-medical-border">
-                  <p className="text-sm text-muted-foreground">Peak Glucose</p>
-                  <p className="text-2xl font-bold text-foreground">155 mg/dL</p>
-                  <p className="text-xs text-muted-foreground mt-1">at 45 minutes</p>
+              {/* Card B: Kraft Curve Analysis */}
+              <div className="bg-card border border-medical-border rounded-xl p-6 shadow-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="text-xl font-bold text-foreground">Kraft Curve Analysis</h3>
+                    <p className="text-sm text-muted-foreground">5-Hour Glucose Tolerance Test</p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                    At Risk
+                  </span>
                 </div>
-                <div className="p-4 bg-medical-accent rounded-lg border border-medical-border">
-                  <p className="text-sm text-muted-foreground">Peak Insulin</p>
-                  <p className="text-2xl font-bold text-foreground">95 μIU/mL</p>
-                  <p className="text-xs text-muted-foreground mt-1">at 45 minutes</p>
+
+                <div className="h-[280px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={graphData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                      <XAxis 
+                        dataKey="time" 
+                        tick={{ fill: '#9ca3af', fontSize: 11 }}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                        tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                      />
+                      <YAxis 
+                        yAxisId="left"
+                        tick={{ fill: '#9ca3af', fontSize: 11 }}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                        tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                        domain={[0, 180]}
+                      />
+                      <YAxis 
+                        yAxisId="right"
+                        orientation="right"
+                        tick={{ fill: '#9ca3af', fontSize: 11 }}
+                        axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                        tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
+                        domain={[0, 140]}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '8px',
+                          color: '#fff',
+                        }}
+                      />
+                      <Legend 
+                        wrapperStyle={{ paddingTop: '10px' }}
+                        formatter={(value) => <span style={{ color: '#9ca3af', fontSize: '12px' }}>{value}</span>}
+                      />
+                      <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="Glucose"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        name="Glucose"
+                        dot={{ fill: '#3b82f6', r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="Insulin"
+                        stroke="#f97316"
+                        strokeWidth={2}
+                        name="Insulin"
+                        dot={{ fill: '#f97316', r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
-                <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/30">
-                  <p className="text-sm text-destructive">Pattern Detected</p>
-                  <p className="text-lg font-bold text-destructive">Delayed Response</p>
-                  <p className="text-xs text-destructive/80 mt-1">Early insulin resistance</p>
+
+                {/* Stats Cards */}
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-medical-accent/50 rounded-lg border border-medical-border">
+                    <p className="text-2xl font-bold text-blue-400">160</p>
+                    <p className="text-xs text-muted-foreground">Peak Glucose (mg/dL)</p>
+                  </div>
+                  <div className="text-center p-3 bg-medical-accent/50 rounded-lg border border-medical-border">
+                    <p className="text-2xl font-bold text-orange-400">120</p>
+                    <p className="text-xs text-muted-foreground">Peak Insulin (μIU/mL)</p>
+                  </div>
+                  <div className="text-center p-3 bg-medical-accent/50 rounded-lg border border-medical-border">
+                    <p className="text-2xl font-bold text-foreground">2.5hr</p>
+                    <p className="text-xs text-muted-foreground">Recovery Time</p>
+                  </div>
                 </div>
               </div>
             </div>
-          ) : (
-            // Solutions Tab
-            <div className="bg-card border border-medical-border rounded-xl p-6 shadow-lg">
-              <h3 className="text-2xl font-bold text-foreground mb-2">Recommended Support</h3>
-              <p className="text-muted-foreground mb-6">Verified vendors matched to your metabolic profile</p>
+          ) : phase === 'solution' ? (
+            // Solution Phase - Vendor Card
+            <div className="animate-in fade-in slide-in-from-right duration-500">
+              <div className="bg-card border border-medical-border rounded-xl p-6 shadow-lg max-w-2xl">
+                <h3 className="text-xl font-bold text-foreground mb-2">Recommended Solution</h3>
+                <p className="text-muted-foreground mb-6">Matched to your metabolic profile</p>
 
-              <div className="space-y-4">
-                {vendors.length > 0 ? vendors.map((vendor, i) => (
-                  <VendorCard key={i} vendor={vendor} />
-                )) : (
-                  <>
-                    <VendorCard 
-                      vendor={{
-                        title: "Taylor Made Rehab",
-                        category: "Metabolic Recovery Specialists",
-                        description: "Specialized protocol for delayed insulin response patterns. Combines targeted nutrition therapy, metabolic testing, and personalized supplementation to improve glucose-insulin dynamics.",
-                        price: "180",
-                        type: 'vendor_card',
-                        tags: ["Insulin Resistance", "Fatigue Protocol"]
-                      }} 
-                    />
-                    <VendorCard 
-                      vendor={{
-                        title: "MetaBalance Clinic",
-                        category: "Endocrine & Metabolic Health",
-                        description: "Comprehensive metabolic assessment with advanced lab work. Includes CGM setup, detailed hormone panel analysis, and 3-month guided protocol for metabolic optimization.",
-                        price: "250",
-                        type: 'vendor_card',
-                        tags: ["Lab Analysis", "Continuous Monitoring"]
-                      }} 
-                    />
-                  </>
+                {vendorData ? (
+                  <VendorCard vendor={vendorData} />
+                ) : (
+                  <VendorCard 
+                    vendor={{
+                      title: "Taylor Made Rehab",
+                      category: "Metabolic Recovery Specialists",
+                      description: "Specialized protocol for delayed insulin response patterns. Combines targeted nutrition therapy, metabolic testing, and personalized supplementation to improve glucose-insulin dynamics.",
+                      price: "180",
+                      type: 'vendor_card',
+                      tags: ["Insulin Resistance", "Fatigue Protocol"]
+                    }} 
+                  />
                 )}
+              </div>
+            </div>
+          ) : (
+            // Reactive Phase - Welcome State
+            <div className="flex items-center justify-center h-full animate-in fade-in duration-500">
+              <div className="text-center max-w-md">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-medical-accent border border-medical-border flex items-center justify-center">
+                  <Activity className="w-10 h-10 text-medical-primary" />
+                </div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Ready to Analyze</h3>
+                <p className="text-muted-foreground">
+                  Ask me about your metabolic health, and I&apos;ll provide personalized insights 
+                  based on your data. Try asking about your Kraft Curve or finding a specialist.
+                </p>
               </div>
             </div>
           )}
