@@ -368,6 +368,7 @@ export default function MeOInterface() {
             <div className="flex justify-center mb-3">
               <Logo size="large" onClick={handleRefresh} />
             </div>
+            <p className="text-muted-foreground text-lg">Your Metabolic Health Partner</p>
           </div>
 
           {/* Search Input */}
