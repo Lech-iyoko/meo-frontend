@@ -4,6 +4,7 @@ export interface ChatResponse {
     response: string; // <-- This was changed from "answer"
     session_id: string;
     retrieved_sources: Source[];
+    mode?: 'response' | 'analysis' | 'solution'; // Backend-driven view mode
 }
 
 export async function postChatMessage(query: string, sessionId: string): Promise<ChatResponse> {
