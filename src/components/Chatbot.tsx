@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, ChevronRight, Activity, Stethoscope, Upload } from 'lucide-react';
+import { Send, Activity, Stethoscope, Upload, Sun, Moon, User, BarChart3, MapPin, Star, ChevronRight, Clock, DollarSign } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,56 +14,191 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 }
 
 // --- Types ---
-type Phase = 'reactive' | 'analysis' | 'solution';
-
-type Source = {
-  title: string;
-  category: string;
-  description?: string;
-  price?: string;
-  gap_solved?: string;
-  type: 'vendor_card' | 'content' | 'graph_data';
-  tags?: string[];
+type Message = {
+  role: 'user' | 'assistant';
+  content: string;
 };
 
 type GraphDataPoint = {
   time: string;
   glucose: number;
   insulin: number;
-  Glucose?: number;
-  Insulin?: number;
 };
 
-type Message = {
-  role: 'user' | 'bot';
-  content: string;
-  timestamp: Date;
+type Vendor = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  rating: number;
+  reviews: number;
+  price: string;
+  location: string;
+  tags: string[];
+  available: boolean;
 };
 
-// --- Default Mock Data for the Kraft Curve Analysis ---
-const DEFAULT_GRAPH_DATA: GraphDataPoint[] = [
-  { time: '0hr', glucose: 85, insulin: 5, Glucose: 85, Insulin: 5 },
-  { time: '0.5hr', glucose: 140, insulin: 80, Glucose: 140, Insulin: 80 },
-  { time: '1hr', glucose: 160, insulin: 120, Glucose: 160, Insulin: 120 },
-  { time: '1.5hr', glucose: 130, insulin: 100, Glucose: 130, Insulin: 100 },
-  { time: '2hr', glucose: 105, insulin: 75, Glucose: 105, Insulin: 75 },
-  { time: '2.5hr', glucose: 90, insulin: 55, Glucose: 90, Insulin: 55 },
-  { time: '3hr', glucose: 95, insulin: 45, Glucose: 95, Insulin: 45 },
-  { time: '3.5hr', glucose: 95, insulin: 35, Glucose: 95, Insulin: 35 },
-  { time: '4hr', glucose: 95, insulin: 25, Glucose: 95, Insulin: 25 },
-  { time: '4.5hr', glucose: 95, insulin: 18, Glucose: 95, Insulin: 18 },
-  { time: '5hr', glucose: 90, insulin: 10, Glucose: 90, Insulin: 10 },
+// --- Mock Vendor Data ---
+const mockVendors: Vendor[] = [
+  {
+    id: '1',
+    name: 'Taylor Made Rehab',
+    category: 'Metabolic Recovery Specialists',
+    description: 'Specialized protocol for delayed insulin response patterns. Combines targeted nutrition therapy, metabolic testing, and personalized supplementation.',
+    rating: 4.9,
+    reviews: 127,
+    price: '$180/session',
+    location: 'Austin, TX',
+    tags: ['Insulin Resistance', 'Fatigue Protocol', 'Nutrition'],
+    available: true,
+  },
+  {
+    id: '2',
+    name: 'Metabolic Health Institute',
+    category: 'Clinical Testing & Analysis',
+    description: 'Comprehensive metabolic panel testing with detailed Kraft curve analysis and personalized intervention plans.',
+    rating: 4.8,
+    reviews: 89,
+    price: '$250/consult',
+    location: 'Houston, TX',
+    tags: ['Lab Testing', 'Kraft Analysis', 'Clinical'],
+    available: true,
+  },
+  {
+    id: '3',
+    name: 'Glucose Optimization Clinic',
+    category: 'Continuous Monitoring',
+    description: 'CGM-based coaching program with real-time glucose monitoring and lifestyle optimization strategies.',
+    rating: 4.7,
+    reviews: 203,
+    price: '$150/month',
+    location: 'Dallas, TX',
+    tags: ['CGM', 'Coaching', 'Lifestyle'],
+    available: false,
+  },
 ];
 
+// --- Kraft Curve Data (from spec) ---
+const kraftCurveData: GraphDataPoint[] = [
+  { time: '0hr', glucose: 85, insulin: 5 },
+  { time: '0.5hr', glucose: 145, insulin: 55 },
+  { time: '1hr', glucose: 160, insulin: 95 },
+  { time: '1.5hr', glucose: 150, insulin: 120 },
+  { time: '2hr', glucose: 135, insulin: 95 },
+  { time: '2.5hr', glucose: 115, insulin: 65 },
+  { time: '3hr', glucose: 100, insulin: 40 },
+  { time: '3.5hr', glucose: 92, insulin: 28 },
+  { time: '4hr', glucose: 88, insulin: 18 },
+  { time: '4.5hr', glucose: 85, insulin: 12 },
+  { time: '5hr', glucose: 83, insulin: 8 },
+];
+
+// --- Risk Score Gauge Component ---
+function RiskScoreGauge({ score }: { score: number }) {
+  const radius = 32;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+  const color = score >= 70 ? '#ef4444' : score >= 50 ? '#f97316' : '#22c55e';
+
+  return (
+    <div className="relative w-20 h-20">
+      <svg 
+        className="w-full h-full" 
+        viewBox="0 0 80 80"
+        style={{ transform: 'rotate(-90deg)' }}
+      >
+        {/* Background circle */}
+        <circle
+          cx="40"
+          cy="40"
+          r={radius}
+          fill="none"
+          stroke="var(--medical-border)"
+          strokeWidth="6"
+        />
+        {/* Progress circle */}
+        <circle
+          cx="40"
+          cy="40"
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="6"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-1000"
+        />
+      </svg>
+      {/* Center icon */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <BarChart3 className="h-8 w-8 text-orange-500" />
+      </div>
+    </div>
+  );
+}
+
+// --- Blood Droplet SVG Component ---
+function BloodDroplet({ className }: { className?: string }) {
+  return (
+    <svg 
+      viewBox="0 0 24 24" 
+      className={className}
+      fill="currentColor"
+    >
+      <path d="M12 2C12 2 5 10 5 15C5 19.4183 8.13401 23 12 23C15.866 23 19 19.4183 19 15C19 10 12 2 12 2Z" />
+    </svg>
+  );
+}
+
+// --- Logo Component ---
+function Logo({ size = 'large', onClick }: { size?: 'large' | 'small'; onClick?: () => void }) {
+  const content = (
+    <>
+      <span className={cn(
+        "font-bold text-foreground",
+        size === 'large' ? "text-5xl" : "text-xl"
+      )}>
+        Me
+      </span>
+      <BloodDroplet 
+        className={cn(
+          "text-medical-primary",
+          size === 'large' ? "w-10 h-10 mt-1" : "w-5 h-5"
+        )} 
+      />
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button 
+        onClick={onClick}
+        className="flex items-center gap-0 hover:opacity-80 transition-opacity"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-0">
+      {content}
+    </div>
+  );
+}
+
+// --- Main Component ---
 export default function MeOInterface() {
   // --- State ---
-  const [phase, setPhase] = useState<Phase>('reactive');
   const [isActive, setIsActive] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [graphData, setGraphData] = useState<GraphDataPoint[]>(DEFAULT_GRAPH_DATA);
-  const [vendorData, setVendorData] = useState<Source | null>(null);
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [loading, setLoading] = useState(false);
+  const [graphData, setGraphData] = useState<GraphDataPoint[]>(kraftCurveData);
+  // viewMode is controlled by backend keyword detection
+  const [viewMode, setViewMode] = useState<'analysis' | 'solution'>('analysis');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll
@@ -71,14 +206,28 @@ export default function MeOInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // --- Logic Engine ---
+  // Theme effect
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  // Toggle theme
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
+  // --- Handle Send Message ---
   const handleSendMessage = async (e?: React.FormEvent, prefill?: string) => {
     e?.preventDefault();
     const messageText = prefill || input;
     if (!messageText.trim()) return;
 
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: messageText, timestamp: new Date() }]);
+    setMessages(prev => [...prev, { role: 'user', content: messageText }]);
     setLoading(true);
     setIsActive(true);
 
@@ -92,50 +241,36 @@ export default function MeOInterface() {
       const data = await res.json();
       const botResponse = data.response;
       
-      // Backend-driven State Machine Logic - STRICT GATEKEEPING
-      // Default: Stay in 'reactive' mode (centered conversational UI)
-      // ONLY switch phases if specific source types are present
+      // Backend-driven mode detection via keywords
+      const lowerResponse = botResponse.toLowerCase();
+      if (lowerResponse.includes('specialist') || lowerResponse.includes('vendor') || lowerResponse.includes('provider') || lowerResponse.includes('clinic')) {
+        setViewMode('solution');
+      } else if (lowerResponse.includes('analysis') || lowerResponse.includes('glucose') || lowerResponse.includes('insulin') || lowerResponse.includes('kraft')) {
+        setViewMode('analysis');
+      }
+      
+      // Check for graph data in sources
       const retrievedSources = data.retrieved_sources || [];
-      
-      let hasGraphData = false;
-      let hasVendorCard = false;
-      
       for (const source of retrievedSources) {
-        if (source.type === 'graph_data') {
-          hasGraphData = true;
-          // Parse graph data if available
-          if (source.gap_solved) {
-            try {
-              const parsedData = JSON.parse(source.gap_solved);
-              if (Array.isArray(parsedData)) {
-                setGraphData(parsedData);
-              }
-            } catch {
-              console.warn('Failed to parse graph data, using defaults');
+        if (source.type === 'graph_data' && source.gap_solved) {
+          try {
+            const parsedData = JSON.parse(source.gap_solved);
+            if (Array.isArray(parsedData)) {
+              setGraphData(parsedData);
             }
+          } catch {
+            console.warn('Failed to parse graph data, using defaults');
           }
-        } else if (source.type === 'vendor_card') {
-          hasVendorCard = true;
-          setVendorData(source);
         }
       }
-      
-      // Strict phase transitions - ONLY trigger on specific data types
-      if (hasGraphData) {
-        setPhase('analysis');
-      } else if (hasVendorCard) {
-        setPhase('solution');
-      }
-      // Otherwise: Stay in 'reactive' mode - DO NOT change phase for [PROFILING], [EDUCATION], or plain text
 
-      setMessages(prev => [...prev, { role: 'bot', content: botResponse, timestamp: new Date() }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: botResponse }]);
 
     } catch (err) {
       console.error(err);
       setMessages(prev => [...prev, { 
-        role: 'bot', 
-        content: "I'm having trouble connecting. Please check your internet connection or try again later.", 
-        timestamp: new Date() 
+        role: 'assistant', 
+        content: "I'm having trouble connecting. Please check your internet connection or try again later."
       }]);
     } finally {
       setLoading(false);
@@ -146,65 +281,45 @@ export default function MeOInterface() {
     handleSendMessage(undefined, text);
   };
 
-  // --- Status Badge Component ---
-  const StatusBadge = () => {
-    const statusConfig = {
-      reactive: { label: 'Reactive', color: 'bg-gray-500/20 text-gray-300 border-gray-500/30' },
-      analysis: { label: 'Analysis', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-      solution: { label: 'Solution', color: 'bg-medical-primary/20 text-medical-primary border-medical-primary/30' },
-    };
-    const config = statusConfig[phase];
-    
-    return (
-      <div className={cn(
-        "px-4 py-2 rounded-full text-sm font-medium border transition-all duration-300",
-        config.color
-      )}>
-        Status: {config.label}
-      </div>
-    );
+  // Handle page refresh
+  const handleRefresh = () => {
+    window.location.reload();
   };
 
-  // --- Blood Droplet SVG Component ---
-  const BloodDroplet = ({ className }: { className?: string }) => (
-    <svg 
-      viewBox="0 0 24 24" 
-      className={className}
-      fill="currentColor"
-    >
-      <path d="M12 2C12 2 5 10 5 15C5 19.4183 8.13401 23 12 23C15.866 23 19 19.4183 19 15C19 10 12 2 12 2Z" />
-    </svg>
-  );
-
-  // --- Logo Component ---
-  const Logo = ({ size = 'large' }: { size?: 'large' | 'small' }) => (
-    <div className="flex items-center gap-0">
-      <span className={cn(
-        "font-bold text-foreground",
-        size === 'large' ? "text-5xl" : "text-xl"
-      )}>
-        Me
-      </span>
-      <BloodDroplet 
-        className={cn(
-          "text-medical-primary",
-          size === 'large' ? "w-10 h-10 mt-1" : "w-5 h-5"
-        )} 
-      />
-    </div>
-  );
-
-  // --- Render: Initial State (View 1) - Landing Page ---
+  // --- Render: Initial State (Centered Search View) ---
   if (!isActive) {
     return (
-      <div className="min-h-screen dark bg-gradient-to-b from-[#2a5555] via-[#1e4444] to-[#1a3a3a] flex items-center justify-center p-4">
+      <div className={cn(
+        "min-h-screen flex items-center justify-center p-4",
+        theme === 'dark' 
+          ? "bg-gradient-to-b from-background via-medical-bg to-medical-accent/10" 
+          : "bg-white"
+      )}>
+        {/* Limited Preview Badge - Fixed at top center */}
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+          <div className="px-4 py-2 rounded-full text-sm font-medium border border-medical-primary/40 bg-medical-primary/10 backdrop-blur-md text-medical-primary">
+            Limited Preview
+          </div>
+        </div>
+
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="fixed top-4 right-4 p-2 rounded-lg bg-background/80 backdrop-blur border border-medical-border hover:bg-medical-accent transition-colors"
+        >
+          {theme === 'dark' ? (
+            <Sun className="h-5 w-5 text-foreground" />
+          ) : (
+            <Moon className="h-5 w-5 text-foreground" />
+          )}
+        </button>
+
         <div className="w-full max-w-2xl mx-auto">
-          {/* Logo & Tagline */}
+          {/* Logo & Title */}
           <div className="text-center mb-8">
             <div className="flex justify-center mb-3">
-              <Logo size="large" />
+              <Logo size="large" onClick={handleRefresh} />
             </div>
-            <p className="text-muted-foreground text-lg">Your Metabolic Health Partner</p>
           </div>
 
           {/* Search Input */}
@@ -213,7 +328,7 @@ export default function MeOInterface() {
               <input
                 type="text"
                 placeholder="Ask about your metabolic health..."
-                className="w-full h-14 text-lg pl-5 pr-14 rounded-xl bg-card/80 backdrop-blur border border-medical-border shadow-lg shadow-medical-primary/5 focus:outline-none focus:ring-2 focus:ring-medical-primary/50 focus:border-medical-primary text-foreground placeholder:text-muted-foreground"
+                className="w-full h-14 text-lg pl-5 pr-14 rounded-xl bg-card/80 backdrop-blur border border-medical-border shadow-lg focus:outline-none focus:ring-2 focus:ring-medical-primary/50 focus:border-medical-primary text-foreground placeholder:text-muted-foreground"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
               />
@@ -255,67 +370,78 @@ export default function MeOInterface() {
     );
   }
 
-  // --- Determine if we should show Split View ---
-  const showSplitView = phase === 'analysis' || phase === 'solution';
-
-  // --- Render: Active State ---
+  // --- Render: Active State (Split-Screen Layout) ---
   return (
-    <div className="min-h-screen dark bg-gradient-to-b from-[#2a5555] via-[#1e4444] to-[#1a3a3a]">
-      {/* Dynamic Layout Container */}
-      <div className={cn(
-        "min-h-screen transition-all duration-500 ease-in-out",
-        showSplitView ? "grid grid-cols-12 gap-0" : "flex flex-col"
-      )}>
+    <div className={cn(
+      "min-h-screen",
+      theme === 'dark' 
+        ? "bg-gradient-to-b from-background via-medical-bg to-medical-accent/10" 
+        : "bg-white"
+    )}>
+      {/* Limited Preview Badge - Fixed at top center */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+        <div className="px-4 py-2 rounded-full text-sm font-medium border border-medical-primary/40 bg-medical-primary/10 backdrop-blur-md text-medical-primary">
+          Limited Preview
+        </div>
+      </div>
+
+      {/* Theme Toggle */}
+      <button
+        onClick={toggleTheme}
+        className="fixed top-4 right-4 z-50 p-2 rounded-lg bg-background/80 backdrop-blur border border-medical-border hover:bg-medical-accent transition-colors"
+      >
+        {theme === 'dark' ? (
+          <Sun className="h-5 w-5 text-foreground" />
+        ) : (
+          <Moon className="h-5 w-5 text-foreground" />
+        )}
+      </button>
+
+      {/* Split Layout Container */}
+      <div className="min-h-screen flex">
         
-        {/* Chat Panel - Centered in Reactive, Left in Split */}
-        <div className={cn(
-          "flex flex-col transition-all duration-500 ease-in-out",
-          showSplitView 
-            ? "col-span-4 border-r border-medical-border bg-card/30 backdrop-blur h-screen" 
-            : "flex-1 max-w-3xl mx-auto w-full px-4"
-        )}>
-          {/* Header */}
-          <div className={cn(
-            "flex items-center justify-between py-4 border-b border-medical-border/50",
-            showSplitView ? "px-4 bg-card/50" : "px-0"
-          )}>
-            <Logo size="small" />
-            <StatusBadge />
+        {/* Left Panel (35% Width) */}
+        <div className="w-full md:w-[35%] flex flex-col bg-card/50 backdrop-blur border-r border-medical-border h-screen">
+          
+          {/* Header Section */}
+          <div className="p-4 border-b border-medical-border flex items-center justify-between">
+            <Logo size="small" onClick={handleRefresh} />
+            <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-medical-border hover:bg-medical-accent transition-colors text-foreground">
+              <Stethoscope className="h-4 w-4" />
+              Clinician Mode
+            </button>
           </div>
 
-          {/* Messages Area */}
-          <div className={cn(
-            "flex-1 overflow-y-auto py-6 space-y-6",
-            showSplitView ? "px-4" : "px-0"
-          )}>
+          {/* Action Button Section */}
+          <div className="p-4">
+            <button className="w-full py-3 px-4 bg-medical-primary hover:bg-medical-primary/90 text-primary-foreground font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
+              <User className="h-4 w-4" />
+              Check Recovery
+            </button>
+          </div>
+
+          {/* Message Thread */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.map((msg, i) => (
               <div key={i} className={cn(
                 "flex",
                 msg.role === 'user' ? "justify-end" : "justify-start"
               )}>
                 {msg.role === 'user' ? (
-                  // User Message - Always a distinctive bubble
-                  <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-medical-primary text-primary-foreground">
-                    <p className="text-sm leading-relaxed">{msg.content}</p>
+                  // User Message - darker teal bubble (matching screenshot)
+                  <div 
+                    className="max-w-[85%] rounded-2xl px-4 py-3"
+                    style={{ backgroundColor: '#2C564C' }}
+                  >
+                    <p className="text-sm leading-relaxed text-white">{msg.content}</p>
                   </div>
                 ) : (
-                  // Bot Message - Clean text in Reactive, Card in Split
-                  <div className={cn(
-                    "max-w-[90%]",
-                    showSplitView 
-                      ? "rounded-lg p-3 bg-card border border-medical-border" 
-                      : "" // No card/bubble in reactive mode - clean text
-                  )}>
-                    <div className={cn(
-                      "prose prose-sm max-w-none",
-                      "prose-p:text-foreground prose-p:leading-relaxed prose-p:my-2",
-                      "prose-strong:text-foreground prose-strong:font-semibold",
-                      "prose-ul:text-foreground prose-ol:text-foreground",
-                      "prose-li:my-1",
-                      "prose-headings:text-foreground prose-headings:font-semibold",
-                      "prose-a:text-medical-primary prose-a:no-underline hover:prose-a:underline",
-                      "prose-code:text-medical-primary prose-code:bg-medical-accent/50 prose-code:px-1 prose-code:rounded"
-                    )}>
+                  // Assistant Message - with darker green background margin
+                  <div 
+                    className="max-w-[90%] rounded-lg px-4 py-3"
+                    style={{ backgroundColor: 'rgba(20, 50, 50, 0.5)' }}
+                  >
+                    <div className="prose prose-sm max-w-none text-foreground/90">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {msg.content}
                       </ReactMarkdown>
@@ -326,31 +452,23 @@ export default function MeOInterface() {
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className={cn(
-                  "rounded-lg p-3",
-                  showSplitView ? "bg-card border border-medical-border" : ""
-                )}>
-                  <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                  </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input Area */}
-          <div className={cn(
-            "py-4 border-t border-medical-border/50",
-            showSplitView ? "px-4 bg-card/50" : "px-0 pb-8"
-          )}>
+          {/* Footer Input Section */}
+          <div className="p-4 border-t border-medical-border">
             <form onSubmit={handleSendMessage} className="relative">
               <input
                 type="text"
                 placeholder="Ask a follow-up..."
-                className="w-full py-3 pl-4 pr-12 rounded-xl bg-card/80 border border-medical-border focus:outline-none focus:ring-2 focus:ring-medical-primary/50 text-foreground placeholder:text-muted-foreground"
+                className="w-full py-3 pl-4 pr-12 rounded-xl bg-card/80 backdrop-blur border border-medical-border focus:outline-none focus:ring-2 focus:ring-medical-primary/50 text-foreground placeholder:text-muted-foreground"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
               />
@@ -364,229 +482,226 @@ export default function MeOInterface() {
           </div>
         </div>
 
-        {/* Right Panel - Dashboard Area (Only visible in Split View) */}
-        {showSplitView && (
-          <div className="col-span-8 h-screen overflow-y-auto p-6 animate-in fade-in slide-in-from-right duration-500">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-foreground">Meterbolic</h2>
-              <StatusBadge />
+        {/* Right Panel (65% Width - Analysis Dashboard) */}
+        <div className="hidden md:flex flex-1 flex-col p-8 overflow-y-auto animate-in fade-in slide-in-from-right duration-500">
+          
+          {/* Header Section */}
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">
+                {viewMode === 'analysis' ? 'Metabolic Analysis' : 'Recommended Support'}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {viewMode === 'analysis' ? 'Based on your latest data' : 'Matched to your metabolic profile'}
+              </p>
             </div>
-
-            {/* Dashboard Content */}
-            {phase === 'analysis' ? (
-              // Analysis Phase - Metabolic Dashboard
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {/* Card A: Metabolic Analysis */}
-                <div className="bg-card border border-medical-border rounded-xl p-6 shadow-lg">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground">Metabolic Analysis</h3>
-                      <p className="text-sm text-muted-foreground">Based on your latest data</p>
-                    </div>
-                    {/* Risk Score Badge */}
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Risk Score</p>
-                        <p className="text-2xl font-bold text-foreground">65</p>
-                      </div>
-                      <div className="w-12 h-12 rounded-full bg-orange-500/20 border-2 border-orange-500 flex items-center justify-center">
-                        <svg className="w-6 h-6 text-orange-500" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2C12 2 5 10 5 15C5 19.4183 8.13401 23 12 23C15.866 23 19 19.4183 19 15C19 10 12 2 12 2Z" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Risk Status Pill */}
-                  <div className="mb-4">
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                      At Risk
-                    </span>
-                  </div>
-
-                  {/* Analysis Text */}
-                  <div className="bg-medical-accent/50 rounded-lg p-4 border border-medical-border">
-                    <p className="text-sm text-foreground leading-relaxed">
-                      Your metabolic recovery score is currently at <strong>72/100</strong>. Based on your 
-                      HRV data and glucose variability, your body is showing moderate stress response. 
-                      Key factors: sleep efficiency was <strong>84%</strong>, glycemic variability index 
-                      was elevated at <strong>28%</strong>, and your morning cortisol pattern suggests 
-                      adrenal fatigue. Consider implementing the morning light exposure protocol to 
-                      optimize circadian rhythm.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Card B: Kraft Curve Analysis */}
-                <div className="bg-card border border-medical-border rounded-xl p-6 shadow-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <h3 className="text-xl font-bold text-foreground">Kraft Curve Analysis</h3>
-                      <p className="text-sm text-muted-foreground">5-Hour Glucose Tolerance Test</p>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                      At Risk
-                    </span>
-                  </div>
-
-                  <div className="h-[280px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={graphData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                        <XAxis 
-                          dataKey="time" 
-                          tick={{ fill: '#9ca3af', fontSize: 11 }}
-                          axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
-                          tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
-                        />
-                        <YAxis 
-                          yAxisId="left"
-                          tick={{ fill: '#9ca3af', fontSize: 11 }}
-                          axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
-                          tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
-                          domain={[0, 180]}
-                        />
-                        <YAxis 
-                          yAxisId="right"
-                          orientation="right"
-                          tick={{ fill: '#9ca3af', fontSize: 11 }}
-                          axisLine={{ stroke: 'rgba(255,255,255,0.2)' }}
-                          tickLine={{ stroke: 'rgba(255,255,255,0.2)' }}
-                          domain={[0, 140]}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'rgba(30, 41, 59, 0.95)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '8px',
-                            color: '#fff',
-                          }}
-                        />
-                        <Legend 
-                          wrapperStyle={{ paddingTop: '10px' }}
-                          formatter={(value) => <span style={{ color: '#9ca3af', fontSize: '12px' }}>{value}</span>}
-                        />
-                        <Line
-                          yAxisId="left"
-                          type="monotone"
-                          dataKey="Glucose"
-                          stroke="#5eead4"
-                          strokeWidth={2}
-                          name="Glucose"
-                          dot={{ fill: '#5eead4', r: 4 }}
-                          activeDot={{ r: 6 }}
-                        />
-                        <Line
-                          yAxisId="right"
-                          type="monotone"
-                          dataKey="Insulin"
-                          stroke="#fbbf24"
-                          strokeWidth={2}
-                          name="Insulin"
-                          dot={{ fill: '#fbbf24', r: 4 }}
-                          activeDot={{ r: 6 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Stats Cards */}
-                  <div className="mt-4 grid grid-cols-3 gap-3">
-                    <div className="text-center p-3 bg-medical-accent/50 rounded-lg border border-medical-border">
-                      <p className="text-2xl font-bold text-teal-300">160</p>
-                      <p className="text-xs text-muted-foreground">Peak Glucose (mg/dL)</p>
-                    </div>
-                    <div className="text-center p-3 bg-medical-accent/50 rounded-lg border border-medical-border">
-                      <p className="text-2xl font-bold text-amber-400">120</p>
-                      <p className="text-xs text-muted-foreground">Peak Insulin (μIU/mL)</p>
-                    </div>
-                    <div className="text-center p-3 bg-medical-accent/50 rounded-lg border border-medical-border">
-                      <p className="text-2xl font-bold text-foreground">2.5hr</p>
-                      <p className="text-xs text-muted-foreground">Recovery Time</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : phase === 'solution' ? (
-              // Solution Phase - Vendor Card
-              <div className="max-w-2xl">
-                <div className="bg-card border border-medical-border rounded-xl p-6 shadow-lg">
-                  <h3 className="text-xl font-bold text-foreground mb-2">Recommended Solution</h3>
-                  <p className="text-muted-foreground mb-6">Matched to your metabolic profile</p>
-
-                  {vendorData ? (
-                    <VendorCard vendor={vendorData} />
-                  ) : (
-                    <VendorCard 
-                      vendor={{
-                        title: "Taylor Made Rehab",
-                        category: "Metabolic Recovery Specialists",
-                        description: "Specialized protocol for delayed insulin response patterns. Combines targeted nutrition therapy, metabolic testing, and personalized supplementation to improve glucose-insulin dynamics.",
-                        price: "180",
-                        type: 'vendor_card',
-                        tags: ["Insulin Resistance", "Fatigue Protocol"]
-                      }} 
-                    />
+            <div className="flex items-center gap-4">
+              {/* View Mode Toggle */}
+              <div className="flex rounded-lg border border-medical-border overflow-hidden">
+                <button
+                  onClick={() => setViewMode('analysis')}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium transition-colors",
+                    viewMode === 'analysis'
+                      ? "bg-medical-primary text-primary-foreground"
+                      : "bg-transparent text-foreground hover:bg-medical-accent"
                   )}
+                >
+                  Analysis
+                </button>
+                <button
+                  onClick={() => setViewMode('solution')}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium transition-colors",
+                    viewMode === 'solution'
+                      ? "bg-medical-primary text-primary-foreground"
+                      : "bg-transparent text-foreground hover:bg-medical-accent"
+                  )}
+                >
+                  Solutions
+                </button>
+              </div>
+              {viewMode === 'analysis' && (
+                <>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Risk Score</p>
+                    <p className="text-3xl font-bold text-orange-500">65</p>
+                  </div>
+                  <RiskScoreGauge score={65} />
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Analysis View */}
+          {viewMode === 'analysis' && (
+            <div className="bg-card/80 backdrop-blur border border-medical-border rounded-xl shadow-lg p-6">
+              
+              {/* Card Header */}
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">Kraft Curve Analysis</h2>
+                  <p className="text-sm text-muted-foreground">5-Hour Glucose Tolerance Test</p>
+                </div>
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                  At Risk
+                </span>
+              </div>
+
+              {/* Chart Section - Using LineChart for reliability */}
+              <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={graphData} margin={{ top: 20, right: 60, left: 20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                    <XAxis 
+                      dataKey="time" 
+                      tick={{ fill: '#9ca3af', fontSize: 12 }}
+                      axisLine={{ stroke: '#374151' }}
+                      tickLine={{ stroke: '#374151' }}
+                    />
+                    <YAxis 
+                      yAxisId="glucose"
+                      tick={{ fill: '#3b82f6', fontSize: 12 }}
+                      axisLine={{ stroke: '#3b82f6' }}
+                      tickLine={{ stroke: '#3b82f6' }}
+                      domain={[0, 200]}
+                      label={{ value: 'Glucose (mg/dL)', angle: -90, position: 'insideLeft', fill: '#3b82f6', fontSize: 12 }}
+                    />
+                    <YAxis 
+                      yAxisId="insulin"
+                      orientation="right"
+                      tick={{ fill: '#f97316', fontSize: 12 }}
+                      axisLine={{ stroke: '#f97316' }}
+                      tickLine={{ stroke: '#f97316' }}
+                      domain={[0, 150]}
+                      label={{ value: 'Insulin (μIU/mL)', angle: 90, position: 'insideRight', fill: '#f97316', fontSize: 12 }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#1f2937',
+                        border: '1px solid #374151',
+                        borderRadius: '8px',
+                        color: '#fff',
+                      }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '10px' }}
+                    />
+                    <Line
+                      yAxisId="glucose"
+                      type="monotone"
+                      dataKey="glucose"
+                      stroke="#3b82f6"
+                      strokeWidth={3}
+                      name="Glucose"
+                      dot={{ fill: '#3b82f6', r: 4, strokeWidth: 2 }}
+                      activeDot={{ r: 6, fill: '#3b82f6' }}
+                    />
+                    <Line
+                      yAxisId="insulin"
+                      type="monotone"
+                      dataKey="insulin"
+                      stroke="#f97316"
+                      strokeWidth={3}
+                      name="Insulin"
+                      dot={{ fill: '#f97316', r: 4, strokeWidth: 2 }}
+                      activeDot={{ r: 6, fill: '#f97316' }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-3 gap-4 mt-6">
+                <div className="bg-medical-accent/30 border border-medical-border rounded-lg p-4">
+                  <p className="text-3xl font-bold text-blue-400">160</p>
+                  <p className="text-xs text-muted-foreground">Peak Glucose</p>
+                </div>
+                <div className="bg-medical-accent/30 border border-medical-border rounded-lg p-4">
+                  <p className="text-3xl font-bold text-orange-500">120</p>
+                  <p className="text-xs text-muted-foreground">Peak Insulin</p>
+                </div>
+                <div className="bg-medical-accent/30 border border-medical-border rounded-lg p-4">
+                  <p className="text-3xl font-bold text-medical-primary">2.5hr</p>
+                  <p className="text-xs text-muted-foreground">Recovery Time</p>
                 </div>
               </div>
-            ) : null}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+            </div>
+          )}
 
-// --- Vendor Card Component ---
-interface VendorCardProps {
-  vendor: Source;
-}
+          {/* Solution View - Vendor Cards */}
+          {viewMode === 'solution' && (
+            <div className="space-y-4">
+              {mockVendors.map((vendor) => (
+                <div 
+                  key={vendor.id}
+                  className="bg-card/80 backdrop-blur border border-medical-border rounded-xl p-6 hover:border-medical-primary/50 transition-all cursor-pointer group"
+                >
+                  <div className="flex justify-between items-start">
+                    {/* Left Content */}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-bold text-foreground group-hover:text-medical-primary transition-colors">
+                          {vendor.name}
+                        </h3>
+                        {vendor.available ? (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                            Available
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                            Waitlist
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-medical-primary font-medium mb-2">{vendor.category}</p>
+                      <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{vendor.description}</p>
+                      
+                      {/* Tags */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {vendor.tags.map((tag, i) => (
+                          <span 
+                            key={i}
+                            className="px-2 py-1 rounded-md text-xs bg-medical-accent/50 text-foreground border border-medical-border"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
 
-function VendorCard({ vendor }: VendorCardProps) {
-  const tags = vendor.tags || [vendor.gap_solved, vendor.category].filter(Boolean);
-  
-  return (
-    <div className="border border-medical-border rounded-lg p-6 hover:border-medical-primary transition-colors bg-medical-accent/30">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h4 className="text-xl font-bold text-foreground mb-1">{vendor.title}</h4>
-          <p className="text-sm text-muted-foreground mb-2">{vendor.category}</p>
-          <div className="flex gap-2 flex-wrap">
-            {tags.map((tag, i) => (
-              <span 
-                key={i}
-                className="text-xs bg-medical-primary/10 text-medical-primary px-2 py-1 rounded"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
+                      {/* Meta Info */}
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                          <span className="text-foreground font-medium">{vendor.rating}</span>
+                          <span>({vendor.reviews} reviews)</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          <span>{vendor.location}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Content - Price & CTA */}
+                    <div className="flex flex-col items-end gap-3 ml-6">
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-foreground">{vendor.price}</p>
+                      </div>
+                      <button className="flex items-center gap-2 px-4 py-2 bg-medical-primary hover:bg-medical-primary/90 text-primary-foreground font-medium rounded-lg transition-colors">
+                        Book Now
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                      <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                        Learn More
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold text-foreground">${vendor.price}</p>
-          <p className="text-xs text-muted-foreground">per session</p>
-        </div>
-      </div>
-
-      {/* Description */}
-      {vendor.description && (
-        <p className="text-sm text-foreground mb-4 leading-relaxed">
-          {vendor.description}
-        </p>
-      )}
-
-      {/* Actions */}
-      <div className="flex gap-3">
-        <button className="flex-1 py-3 bg-medical-primary hover:bg-medical-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors">
-          Book Session
-        </button>
-        <button className="px-4 py-3 border border-medical-border bg-transparent hover:bg-medical-accent rounded-lg transition-colors flex items-center gap-1 text-foreground">
-          Learn More
-          <ChevronRight className="h-4 w-4" />
-        </button>
       </div>
     </div>
   );
