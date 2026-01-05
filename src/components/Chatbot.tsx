@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Send, Activity, Stethoscope, Upload, Sun, Moon, User, BarChart3, MapPin, Star, ChevronRight, Clock, DollarSign } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Send, Activity, Stethoscope, Upload, Sun, Moon, BarChart3, MapPin, Star, ChevronRight, GripVertical } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -197,8 +198,12 @@ export default function MeOInterface() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [loading, setLoading] = useState(false);
   const [graphData, setGraphData] = useState<GraphDataPoint[]>(kraftCurveData);
-  // viewMode is controlled by backend keyword detection
-  const [viewMode, setViewMode] = useState<'analysis' | 'solution'>('analysis');
+  // viewMode is controlled by backend mode field - 'response' is default (full-width chat)
+  const [viewMode, setViewMode] = useState<'response' | 'analysis' | 'solution'>('response');
+  // Resizable panel width (percentage for chat panel when in split mode)
+  const [chatPanelWidth, setChatPanelWidth] = useState(35);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll
@@ -241,12 +246,9 @@ export default function MeOInterface() {
       const data = await res.json();
       const botResponse = data.response;
       
-      // Backend-driven mode detection via keywords
-      const lowerResponse = botResponse.toLowerCase();
-      if (lowerResponse.includes('specialist') || lowerResponse.includes('vendor') || lowerResponse.includes('provider') || lowerResponse.includes('clinic')) {
-        setViewMode('solution');
-      } else if (lowerResponse.includes('analysis') || lowerResponse.includes('glucose') || lowerResponse.includes('insulin') || lowerResponse.includes('kraft')) {
-        setViewMode('analysis');
+      // Backend-driven mode detection - only switch if backend explicitly sets mode
+      if (data.mode === 'analysis' || data.mode === 'solution') {
+        setViewMode(data.mode);
       }
       
       // Check for graph data in sources
@@ -285,6 +287,52 @@ export default function MeOInterface() {
   const handleRefresh = () => {
     window.location.reload();
   };
+
+  // --- Resizable Panel Handlers ---
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const newWidth = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+    
+    // Clamp between 25% and 60%
+    setChatPanelWidth(Math.min(60, Math.max(25, newWidth)));
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Add/remove mouse event listeners for resize
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  // Persist panel width to localStorage
+  useEffect(() => {
+    const savedWidth = localStorage.getItem('meoChatPanelWidth');
+    if (savedWidth) {
+      setChatPanelWidth(parseFloat(savedWidth));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (viewMode !== 'response') {
+      localStorage.setItem('meoChatPanelWidth', chatPanelWidth.toString());
+    }
+  }, [chatPanelWidth, viewMode]);
 
   // --- Render: Initial State (Centered Search View) ---
   if (!isActive) {
@@ -370,13 +418,14 @@ export default function MeOInterface() {
     );
   }
 
-  // --- Render: Active State (Split-Screen Layout) ---
+  // --- Render: Active State (Response-First Layout) ---
   return (
     <div className={cn(
       "min-h-screen",
       theme === 'dark' 
         ? "bg-gradient-to-b from-background via-medical-bg to-medical-accent/10" 
-        : "bg-white"
+        : "bg-white",
+      isDragging && "select-none cursor-col-resize"
     )}>
       {/* Limited Preview Badge - Fixed at top center */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50">
@@ -397,143 +446,162 @@ export default function MeOInterface() {
         )}
       </button>
 
-      {/* Split Layout Container */}
-      <div className="min-h-screen flex">
+      {/* Layout Container */}
+      <div ref={containerRef} className="min-h-screen flex">
         
-        {/* Left Panel (35% Width) */}
-        <div className="w-full md:w-[35%] flex flex-col bg-card/50 backdrop-blur border-r border-medical-border h-screen">
+        {/* Chat Panel - Full width in response mode, resizable in split mode */}
+        <motion.div 
+          layout
+          className={cn(
+            "flex flex-col bg-card/50 backdrop-blur h-screen",
+            viewMode === 'response' 
+              ? "border-0" 
+              : "border-r border-medical-border"
+          )}
+          style={{ 
+            width: viewMode === 'response' ? '100%' : `${chatPanelWidth}%`
+          }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        >
           
           {/* Header Section */}
           <div className="p-4 border-b border-medical-border flex items-center justify-between">
             <Logo size="small" onClick={handleRefresh} />
-            <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-medical-border hover:bg-medical-accent transition-colors text-foreground">
-              <Stethoscope className="h-4 w-4" />
-              Clinician Mode
-            </button>
+            <div className="flex items-center gap-2">
+              <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border border-medical-border hover:bg-medical-accent transition-colors text-foreground">
+                <Stethoscope className="h-4 w-4" />
+                Clinician Mode
+              </button>
+            </div>
           </div>
 
-          {/* Action Button Section */}
-          <div className="p-4">
-            <button className="w-full py-3 px-4 bg-medical-primary hover:bg-medical-primary/90 text-primary-foreground font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
-              <User className="h-4 w-4" />
-              Check Recovery
-            </button>
-          </div>
-
-          {/* Message Thread */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.map((msg, i) => (
-              <div key={i} className={cn(
-                "flex",
-                msg.role === 'user' ? "justify-end" : "justify-start"
-              )}>
-                {msg.role === 'user' ? (
-                  // User Message - darker teal bubble (matching screenshot)
-                  <div 
-                    className="max-w-[85%] rounded-2xl px-4 py-3"
-                    style={{ backgroundColor: '#2C564C' }}
-                  >
-                    <p className="text-sm leading-relaxed text-white">{msg.content}</p>
-                  </div>
-                ) : (
-                  // Assistant Message - with darker green background margin
-                  <div 
-                    className="max-w-[90%] rounded-lg px-4 py-3"
-                    style={{ backgroundColor: 'rgba(20, 50, 50, 0.5)' }}
-                  >
-                    <div className="prose prose-sm max-w-none text-foreground/90">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.content}
-                      </ReactMarkdown>
+          {/* Message Thread - Centered Gemini-style layout */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+              {messages.map((msg, i) => (
+                <div key={i} className={cn(
+                  "w-full",
+                  msg.role === 'user' ? "flex justify-end" : ""
+                )}>
+                  {msg.role === 'user' ? (
+                    // User Message - right-aligned bubble
+                    <div 
+                      className="max-w-[85%] rounded-2xl px-4 py-3"
+                      style={{ backgroundColor: '#2C564C' }}
+                    >
+                      <p className="text-sm leading-relaxed text-white">{msg.content}</p>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            {loading && (
-              <div className="flex justify-start">
-                <div className="flex items-center gap-1">
-                  <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  ) : (
+                    // Assistant Message - clean centered text, no bubble (Gemini-style)
+                    <div className="w-full">
+                      <div className="prose prose-sm max-w-none text-foreground/90 leading-relaxed">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+              ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-2 h-2 bg-medical-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
           </div>
 
           {/* Footer Input Section */}
           <div className="p-4 border-t border-medical-border">
-            <form onSubmit={handleSendMessage} className="relative">
-              <input
-                type="text"
-                placeholder="Ask a follow-up..."
-                className="w-full py-3 pl-4 pr-12 rounded-xl bg-card/80 backdrop-blur border border-medical-border focus:outline-none focus:ring-2 focus:ring-medical-primary/50 text-foreground placeholder:text-muted-foreground"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-              />
-              <button
-                type="submit"
-                className="absolute right-1 top-1 h-10 w-10 flex items-center justify-center rounded-lg bg-medical-primary hover:bg-medical-primary/90 text-primary-foreground transition-colors"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </form>
+            <div className="max-w-3xl mx-auto">
+              <form onSubmit={handleSendMessage} className="relative">
+                <textarea
+                  placeholder="Ask a follow-up..."
+                  className="w-full py-3 pl-4 pr-12 rounded-xl bg-card/80 backdrop-blur border border-medical-border focus:outline-none focus:ring-2 focus:ring-medical-primary/50 text-foreground placeholder:text-muted-foreground resize-none overflow-hidden min-h-[48px] max-h-[200px]"
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    // Auto-resize textarea
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage(e);
+                    }
+                  }}
+                  rows={1}
+                />
+                <button
+                  type="submit"
+                  className="absolute right-2 bottom-2 h-10 w-10 flex items-center justify-center rounded-lg bg-medical-primary hover:bg-medical-primary/90 text-primary-foreground transition-colors"
+                >
+                  <Send className="h-4 w-4" />
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Right Panel (65% Width - Analysis Dashboard) */}
-        <div className="hidden md:flex flex-1 flex-col p-8 overflow-y-auto animate-in fade-in slide-in-from-right duration-500">
+        {/* Resizable Divider - Only shown in split mode */}
+        <AnimatePresence>
+          {viewMode !== 'response' && (
+            <motion.div
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: 12 }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.2 }}
+              onMouseDown={handleMouseDown}
+              className="hidden md:flex flex-col items-center justify-center cursor-col-resize hover:bg-medical-primary/10 transition-colors group"
+            >
+              <div className="h-16 w-1 rounded-full bg-medical-border group-hover:bg-medical-primary transition-colors" />
+              <GripVertical className="h-4 w-4 text-muted-foreground group-hover:text-medical-primary transition-colors my-2" />
+              <div className="h-16 w-1 rounded-full bg-medical-border group-hover:bg-medical-primary transition-colors" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Right Panel - Analysis/Solution Dashboard - Only shown when not in response mode */}
+        <AnimatePresence>
+          {viewMode !== 'response' && (
+            <motion.div 
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 50 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="hidden md:flex flex-1 flex-col p-8 overflow-y-auto"
+            >
           
-          {/* Header Section */}
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">
-                {viewMode === 'analysis' ? 'Metabolic Analysis' : 'Recommended Support'}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {viewMode === 'analysis' ? 'Based on your latest data' : 'Matched to your metabolic profile'}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* View Mode Toggle */}
-              <div className="flex rounded-lg border border-medical-border overflow-hidden">
-                <button
-                  onClick={() => setViewMode('analysis')}
-                  className={cn(
-                    "px-4 py-2 text-sm font-medium transition-colors",
-                    viewMode === 'analysis'
-                      ? "bg-medical-primary text-primary-foreground"
-                      : "bg-transparent text-foreground hover:bg-medical-accent"
+              {/* Header Section */}
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h1 className="text-3xl font-bold text-foreground">
+                    {viewMode === 'analysis' ? 'Metabolic Analysis' : 'Recommended Support'}
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    {viewMode === 'analysis' ? 'Based on your latest data' : 'Matched to your metabolic profile'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  {viewMode === 'analysis' && (
+                    <>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Risk Score</p>
+                        <p className="text-3xl font-bold text-orange-500">65</p>
+                      </div>
+                      <RiskScoreGauge score={65} />
+                    </>
                   )}
-                >
-                  Analysis
-                </button>
-                <button
-                  onClick={() => setViewMode('solution')}
-                  className={cn(
-                    "px-4 py-2 text-sm font-medium transition-colors",
-                    viewMode === 'solution'
-                      ? "bg-medical-primary text-primary-foreground"
-                      : "bg-transparent text-foreground hover:bg-medical-accent"
-                  )}
-                >
-                  Solutions
-                </button>
+                </div>
               </div>
-              {viewMode === 'analysis' && (
-                <>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Risk Score</p>
-                    <p className="text-3xl font-bold text-orange-500">65</p>
-                  </div>
-                  <RiskScoreGauge score={65} />
-                </>
-              )}
-            </div>
-          </div>
 
-          {/* Analysis View */}
+              {/* Analysis View */}
           {viewMode === 'analysis' && (
             <div className="bg-card/80 backdrop-blur border border-medical-border rounded-xl shadow-lg p-6">
               
@@ -701,7 +769,9 @@ export default function MeOInterface() {
               ))}
             </div>
           )}
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
