@@ -269,3 +269,19 @@
 .prose strong {
   font-weight: 600;
 }
+
+/* 3D Transform Utilities for Flip Animation */
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+}
