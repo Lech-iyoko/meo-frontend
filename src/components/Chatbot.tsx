@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Activity, Stethoscope, Upload, Sun, Moon, BarChart3, MapPin, Star, ChevronRight, GripVertical } from 'lucide-react';
+import { Send, Activity, Stethoscope, Upload, Sun, Moon, BarChart3, MapPin, Star, ChevronRight, GripVertical, FlipHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import ReactECharts from 'echarts-for-react';
+import type { EChartsOption } from 'echarts';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { clsx } from 'clsx';
@@ -94,47 +95,204 @@ const kraftCurveData: GraphDataPoint[] = [
   { time: '5hr', glucose: 83, insulin: 8 },
 ];
 
-// --- Risk Score Gauge Component ---
+// --- Biological Age Trajectory Data ---
+type BiologicalAgeDataPoint = {
+  date: string;
+  you: number;
+  target: number;
+};
+
+const biologicalAgeData: BiologicalAgeDataPoint[] = [
+  { date: '09/22', you: 41.93, target: 41.5 },
+  { date: '09/27', you: 41.9, target: 41.5 },
+  { date: '10/02', you: 41.85, target: 41.5 },
+  { date: '10/07', you: 41.8, target: 41.5 },
+  { date: '10/12', you: 41.78, target: 41.5 },
+  { date: '10/17', you: 41.75, target: 41.5 },
+  { date: '10/22', you: 41.72, target: 41.5 },
+  { date: '10/27', you: 41.68, target: 41.5 },
+  { date: '11/01', you: 41.65, target: 41.5 },
+  { date: '11/06', you: 41.62, target: 41.5 },
+  { date: '11/11', you: 41.6, target: 41.5 },
+  { date: '11/16', you: 41.58, target: 41.5 },
+  { date: '11/21', you: 41.55, target: 41.5 },
+  { date: '11/26', you: 41.53, target: 41.5 },
+  { date: '12/01', you: 41.52, target: 41.5 },
+  { date: '12/06', you: 41.51, target: 41.5 },
+  { date: '12/11', you: 41.5, target: 41.5 },
+  { date: '12/16', you: 41.5, target: 41.5 },
+];
+
+// --- Risk Score Gauge Component (ECharts) ---
 function RiskScoreGauge({ score }: { score: number }) {
-  const radius = 32;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
   const color = score >= 70 ? '#ef4444' : score >= 50 ? '#f97316' : '#22c55e';
+
+  const option: EChartsOption = {
+    series: [
+      {
+        type: 'gauge',
+        startAngle: 90,
+        endAngle: -270,
+        radius: '90%',
+        center: ['50%', '50%'],
+        progress: {
+          show: true,
+          width: 8,
+          roundCap: true,
+          itemStyle: {
+            color: color,
+          },
+        },
+        pointer: { show: false },
+        axisLine: {
+          lineStyle: {
+            width: 8,
+            color: [[1, 'rgba(255, 255, 255, 0.1)']],
+          },
+        },
+        axisTick: { show: false },
+        splitLine: { show: false },
+        axisLabel: { show: false },
+        detail: { show: false },
+        data: [{ value: score }],
+      },
+    ],
+  };
 
   return (
     <div className="relative w-20 h-20">
-      <svg 
-        className="w-full h-full" 
-        viewBox="0 0 80 80"
-        style={{ transform: 'rotate(-90deg)' }}
-      >
-        {/* Background circle */}
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          stroke="var(--medical-border)"
-          strokeWidth="6"
-        />
-        {/* Progress circle */}
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth="6"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          className="transition-all duration-1000"
-        />
-      </svg>
+      <ReactECharts
+        option={option}
+        style={{ width: '100%', height: '100%' }}
+        opts={{ renderer: 'svg' }}
+      />
       {/* Center icon */}
       <div className="absolute inset-0 flex items-center justify-center">
         <BarChart3 className="h-8 w-8 text-orange-500" />
       </div>
+    </div>
+  );
+}
+
+// --- Biological Age Gauge Component (ECharts Half-Circle Speedometer) ---
+function BiologicalAgeGauge({ 
+  biologicalAge, 
+  chronologicalAge, 
+  targetAge 
+}: { 
+  biologicalAge: number; 
+  chronologicalAge: number; 
+  targetAge: number;
+}) {
+  const option: EChartsOption = {
+    series: [
+      {
+        type: 'gauge',
+        startAngle: 180,
+        endAngle: 0,
+        center: ['50%', '70%'],
+        radius: '100%',
+        min: 21,
+        max: 85,
+        splitNumber: 8,
+        axisLine: {
+          lineStyle: {
+            width: 20,
+            color: [
+              [0.3, '#22c55e'],   // Green (21-40)
+              [0.55, '#84cc16'],  // Lime (40-56)
+              [0.7, '#eab308'],   // Yellow (56-66)
+              [0.85, '#f97316'],  // Orange (66-75)
+              [1, '#ef4444'],     // Red (75-85)
+            ],
+          },
+        },
+        pointer: {
+          icon: 'path://M12.8,0.7l12,40.1H0.7L12.8,0.7z',
+          length: '60%',
+          width: 12,
+          offsetCenter: [0, '-10%'],
+          itemStyle: {
+            color: 'white',
+            shadowColor: 'rgba(0, 0, 0, 0.3)',
+            shadowBlur: 8,
+            shadowOffsetY: 3,
+          },
+        },
+        axisTick: {
+          length: 8,
+          lineStyle: {
+            color: 'auto',
+            width: 2,
+          },
+        },
+        splitLine: {
+          length: 15,
+          lineStyle: {
+            color: 'auto',
+            width: 3,
+          },
+        },
+        axisLabel: {
+          color: '#9ca3af',
+          fontSize: 12,
+          distance: -45,
+          rotate: 'tangential',
+          formatter: function (value: number) {
+            if (value === 21 || value === 85) return value.toString();
+            if (Math.abs(value - 57.6) < 5) return '57.6';
+            if (value === 70 || value === 80) return value.toString();
+            return '';
+          },
+        },
+        title: {
+          show: false,
+        },
+        detail: {
+          fontSize: 28,
+          fontWeight: 'bold',
+          color: 'hsl(var(--medical-primary))',
+          offsetCenter: [0, '25%'],
+          valueAnimation: true,
+          formatter: function (value: number) {
+            return value.toFixed(1) + '\nAge';
+          },
+          lineHeight: 32,
+        },
+        data: [
+          {
+            value: biologicalAge,
+          },
+        ],
+        // Add target marker using markPoint
+        markPoint: {
+          symbol: 'circle',
+          symbolSize: 16,
+          data: [
+            {
+              name: 'Target',
+              value: targetAge,
+              xAxis: targetAge,
+              yAxis: 0,
+              itemStyle: {
+                color: '#22c55e',
+                borderColor: 'white',
+                borderWidth: 2,
+              },
+            },
+          ],
+        },
+      },
+    ],
+  };
+
+  return (
+    <div className="relative flex flex-col items-center" style={{ width: 320, height: 200 }}>
+      <ReactECharts
+        option={option}
+        style={{ width: '100%', height: '100%' }}
+        opts={{ renderer: 'svg' }}
+      />
     </div>
   );
 }
@@ -202,6 +360,8 @@ export default function MeOInterface() {
   const [viewMode, setViewMode] = useState<'response' | 'analysis' | 'solution'>('response');
   // Resizable panel width (percentage for chat panel when in split mode)
   const [chatPanelWidth, setChatPanelWidth] = useState(35);
+  // Biological Age card flip state
+  const [isBioAgeFlipped, setIsBioAgeFlipped] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -448,13 +608,13 @@ export default function MeOInterface() {
       </button>
 
       {/* Layout Container */}
-      <div ref={containerRef} className="min-h-screen flex">
+      <div ref={containerRef} className="h-screen flex overflow-hidden">
         
-        {/* Chat Panel - Full width in response mode, resizable in split mode */}
+        {/* Chat Panel - Fixed, doesn't scroll with right panel */}
         <motion.div 
           layout
           className={cn(
-            "flex flex-col bg-card/50 backdrop-blur h-screen",
+            "flex flex-col bg-card/50 backdrop-blur h-screen flex-shrink-0",
             viewMode === 'response' 
               ? "border-0" 
               : "border-r border-medical-border"
@@ -576,7 +736,7 @@ export default function MeOInterface() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 50 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="hidden md:flex flex-1 flex-col p-8 overflow-y-auto"
+              className="hidden md:flex flex-1 flex-col p-8 overflow-y-auto h-screen"
             >
           
               {/* Header Section */}
@@ -602,97 +762,280 @@ export default function MeOInterface() {
                 </div>
               </div>
 
-              {/* Analysis View */}
+              {/* Analysis View - Stacked Cards */}
           {viewMode === 'analysis' && (
-            <div className="bg-card/80 backdrop-blur border border-medical-border rounded-xl shadow-lg p-6">
+            <div className="space-y-6 flex-1">
               
-              {/* Card Header */}
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">Kraft Curve Analysis</h2>
-                  <p className="text-sm text-muted-foreground">5-Hour Glucose Tolerance Test</p>
+              {/* Card 1: Biological Age Analysis - Flippable */}
+              <div className="perspective-1000">
+                <div
+                  className="relative cursor-pointer transition-transform duration-700"
+                  style={{
+                    transformStyle: 'preserve-3d',
+                    transform: isBioAgeFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                  }}
+                  onClick={() => setIsBioAgeFlipped(!isBioAgeFlipped)}
+                >
+                  {/* Front Side - Gauge Meter */}
+                  <div 
+                    className="bg-card/80 backdrop-blur border border-medical-border rounded-xl shadow-lg p-6"
+                    style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+                  >
+                    {/* Card Header */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                          <h2 className="text-xl font-bold text-foreground">Biological Age Analysis</h2>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setIsBioAgeFlipped(!isBioAgeFlipped); }}
+                        className="p-2 rounded-lg hover:bg-medical-accent transition-colors"
+                      >
+                        <FlipHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                      </button>
+                    </div>
+
+                    {/* Gauge Display */}
+                    <div className="flex flex-col items-center py-4">
+                      <BiologicalAgeGauge 
+                        biologicalAge={41.9} 
+                        chronologicalAge={42} 
+                        targetAge={41.5} 
+                      />
+                      
+                      {/* Text Below Gauge */}
+                      <div className="text-center mt-4">
+                        <p className="text-sm text-muted-foreground">
+                          You are aging <span className="text-medical-primary font-bold">4% slower</span> than average
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">Target Age: 41.5</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Back Side - Line Chart Graph */}
+                  <div 
+                    className="absolute inset-0 bg-card/80 backdrop-blur border border-medical-border rounded-xl shadow-lg p-6"
+                    style={{ 
+                      backfaceVisibility: 'hidden', 
+                      WebkitBackfaceVisibility: 'hidden',
+                      transform: 'rotateY(180deg)'
+                    }}
+                  >
+                    {/* Card Header */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                          <h2 className="text-xl font-bold text-foreground">Your Age Journey</h2>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">Clinical progress vs target over time</p>
+                      </div>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setIsBioAgeFlipped(!isBioAgeFlipped); }}
+                        className="p-2 rounded-lg hover:bg-medical-accent transition-colors"
+                      >
+                        <FlipHorizontal className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+                      </button>
+                    </div>
+
+                    {/* Line Chart (ECharts) */}
+                    <div className="h-[300px] w-full">
+                      <ReactECharts
+                        option={{
+                          grid: {
+                            top: 40,
+                            right: 30,
+                            bottom: 60,
+                            left: 50,
+                          },
+                          xAxis: {
+                            type: 'category',
+                            data: biologicalAgeData.map(d => d.date),
+                            axisLine: { lineStyle: { color: '#374151' } },
+                            axisLabel: { color: '#9ca3af', fontSize: 10, interval: 2 },
+                            axisTick: { lineStyle: { color: '#374151' } },
+                          },
+                          yAxis: {
+                            type: 'value',
+                            min: 41.45,
+                            max: 41.95,
+                            axisLine: { lineStyle: { color: '#374151' } },
+                            axisLabel: { 
+                              color: '#9ca3af', 
+                              fontSize: 12,
+                              formatter: (value: number) => value.toFixed(2),
+                            },
+                            splitLine: { lineStyle: { color: '#374151', opacity: 0.3, type: 'dashed' } },
+                          },
+                          tooltip: {
+                            trigger: 'axis',
+                            backgroundColor: '#1f2937',
+                            borderColor: '#374151',
+                            textStyle: { color: '#fff' },
+                            formatter: (params: Array<{seriesName: string; value: number; marker: string}>) => {
+                              return params.map(p => `${p.marker} ${p.seriesName}: ${p.value.toFixed(2)}`).join('<br/>');
+                            },
+                          },
+                          legend: {
+                            data: ['YOU', 'OUR TARGET'],
+                            bottom: 10,
+                            textStyle: { color: '#9ca3af' },
+                          },
+                          series: [
+                            {
+                              name: 'YOU',
+                              type: 'line',
+                              data: biologicalAgeData.map(d => d.you),
+                              smooth: true,
+                              lineStyle: { color: '#f97316', width: 3 },
+                              itemStyle: { color: '#f97316' },
+                              symbol: 'circle',
+                              symbolSize: 8,
+                            },
+                            {
+                              name: 'OUR TARGET',
+                              type: 'line',
+                              data: biologicalAgeData.map(d => d.target),
+                              smooth: true,
+                              lineStyle: { color: '#a4d65e', width: 3 },
+                              itemStyle: { color: '#a4d65e' },
+                              symbol: 'circle',
+                              symbolSize: 8,
+                            },
+                          ],
+                        } as EChartsOption}
+                        style={{ width: '100%', height: '100%' }}
+                        opts={{ renderer: 'svg' }}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                  At Risk
-                </span>
               </div>
 
-              {/* Chart Section - Using LineChart for reliability */}
-              <div className="h-[400px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={graphData} margin={{ top: 20, right: 60, left: 20, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                    <XAxis 
-                      dataKey="time" 
-                      tick={{ fill: '#9ca3af', fontSize: 12 }}
-                      axisLine={{ stroke: '#374151' }}
-                      tickLine={{ stroke: '#374151' }}
-                    />
-                    <YAxis 
-                      yAxisId="glucose"
-                      tick={{ fill: '#3b82f6', fontSize: 12 }}
-                      axisLine={{ stroke: '#3b82f6' }}
-                      tickLine={{ stroke: '#3b82f6' }}
-                      domain={[0, 200]}
-                      label={{ value: 'Glucose (mg/dL)', angle: -90, position: 'insideLeft', fill: '#3b82f6', fontSize: 12 }}
-                    />
-                    <YAxis 
-                      yAxisId="insulin"
-                      orientation="right"
-                      tick={{ fill: '#f97316', fontSize: 12 }}
-                      axisLine={{ stroke: '#f97316' }}
-                      tickLine={{ stroke: '#f97316' }}
-                      domain={[0, 150]}
-                      label={{ value: 'Insulin (μIU/mL)', angle: 90, position: 'insideRight', fill: '#f97316', fontSize: 12 }}
-                    />
-                    <Tooltip
-                      contentStyle={{
+              {/* Card 2: Kraft Curve Analysis - Static */}
+              <div className="bg-card/80 backdrop-blur border border-medical-border rounded-xl shadow-lg p-6">
+                
+                {/* Card Header */}
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Kraft Curve Analysis</h2>
+                    <p className="text-sm text-muted-foreground">5-Hour Glucose Tolerance Test</p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                    At Risk
+                  </span>
+                </div>
+
+                {/* Chart Section (ECharts) */}
+                <div className="h-[350px] w-full">
+                  <ReactECharts
+                    option={{
+                      animation: true,
+                      grid: {
+                        top: 60,
+                        right: 80,
+                        bottom: 80,
+                        left: 60,
+                        containLabel: false,
+                      },
+                      xAxis: {
+                        type: 'category',
+                        data: graphData.map(d => d.time),
+                        boundaryGap: false,
+                        axisLine: { lineStyle: { color: '#374151' } },
+                        axisLabel: { color: '#9ca3af', fontSize: 12 },
+                        axisTick: { lineStyle: { color: '#374151' } },
+                      },
+                      yAxis: [
+                        {
+                          type: 'value',
+                          name: 'Glucose (mg/dL)',
+                          min: 0,
+                          max: 200,
+                          position: 'left',
+                          axisLine: { show: true, lineStyle: { color: '#3b82f6' } },
+                          axisLabel: { color: '#3b82f6', fontSize: 12 },
+                          splitLine: { lineStyle: { color: '#374151', opacity: 0.3, type: 'dashed' } },
+                          nameTextStyle: { color: '#3b82f6', fontSize: 12 },
+                          nameLocation: 'end',
+                        },
+                        {
+                          type: 'value',
+                          name: 'Insulin (μIU/mL)',
+                          min: 0,
+                          max: 150,
+                          position: 'right',
+                          axisLine: { show: true, lineStyle: { color: '#f97316' } },
+                          axisLabel: { color: '#f97316', fontSize: 12 },
+                          splitLine: { show: false },
+                          nameTextStyle: { color: '#f97316', fontSize: 12 },
+                          nameLocation: 'end',
+                        },
+                      ],
+                      tooltip: {
+                        trigger: 'axis',
                         backgroundColor: '#1f2937',
-                        border: '1px solid #374151',
-                        borderRadius: '8px',
-                        color: '#fff',
-                      }}
-                    />
-                    <Legend 
-                      wrapperStyle={{ paddingTop: '10px' }}
-                    />
-                    <Line
-                      yAxisId="glucose"
-                      type="monotone"
-                      dataKey="glucose"
-                      stroke="#3b82f6"
-                      strokeWidth={3}
-                      name="Glucose"
-                      dot={{ fill: '#3b82f6', r: 4, strokeWidth: 2 }}
-                      activeDot={{ r: 6, fill: '#3b82f6' }}
-                    />
-                    <Line
-                      yAxisId="insulin"
-                      type="monotone"
-                      dataKey="insulin"
-                      stroke="#f97316"
-                      strokeWidth={3}
-                      name="Insulin"
-                      dot={{ fill: '#f97316', r: 4, strokeWidth: 2 }}
-                      activeDot={{ r: 6, fill: '#f97316' }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+                        borderColor: '#374151',
+                        textStyle: { color: '#fff' },
+                      },
+                      legend: {
+                        data: ['glucose', 'insulin'],
+                        bottom: 10,
+                        textStyle: { color: '#9ca3af' },
+                        icon: 'circle',
+                      },
+                      dataset: {
+                        source: graphData,
+                      },
+                      series: [
+                        {
+                          name: 'glucose',
+                          type: 'line',
+                          yAxisIndex: 0,
+                          encode: { x: 'time', y: 'glucose' },
+                          smooth: 0.3,
+                          showSymbol: true,
+                          lineStyle: { color: '#3b82f6', width: 3 },
+                          itemStyle: { color: '#3b82f6' },
+                          symbol: 'circle',
+                          symbolSize: 10,
+                        },
+                        {
+                          name: 'insulin',
+                          type: 'line',
+                          yAxisIndex: 1,
+                          encode: { x: 'time', y: 'insulin' },
+                          smooth: 0.3,
+                          showSymbol: true,
+                          lineStyle: { color: '#f97316', width: 3 },
+                          itemStyle: { color: '#f97316' },
+                          symbol: 'circle',
+                          symbolSize: 10,
+                        },
+                      ],
+                    } as EChartsOption}
+                    style={{ width: '100%', height: '100%' }}
+                    notMerge={true}
+                  />
+                </div>
 
-              {/* Metrics Grid */}
-              <div className="grid grid-cols-3 gap-4 mt-6">
-                <div className="bg-medical-accent/30 border border-medical-border rounded-lg p-4">
-                  <p className="text-3xl font-bold text-blue-400">160</p>
-                  <p className="text-xs text-muted-foreground">Peak Glucose</p>
-                </div>
-                <div className="bg-medical-accent/30 border border-medical-border rounded-lg p-4">
-                  <p className="text-3xl font-bold text-orange-500">120</p>
-                  <p className="text-xs text-muted-foreground">Peak Insulin</p>
-                </div>
-                <div className="bg-medical-accent/30 border border-medical-border rounded-lg p-4">
-                  <p className="text-3xl font-bold text-medical-primary">2.5hr</p>
-                  <p className="text-xs text-muted-foreground">Recovery Time</p>
+                {/* Metrics Grid */}
+                <div className="grid grid-cols-3 gap-4 mt-6">
+                  <div className="bg-medical-accent/30 border border-medical-border rounded-lg p-4">
+                    <p className="text-3xl font-bold text-blue-400">160</p>
+                    <p className="text-xs text-muted-foreground">Peak Glucose</p>
+                  </div>
+                  <div className="bg-medical-accent/30 border border-medical-border rounded-lg p-4">
+                    <p className="text-3xl font-bold text-orange-500">120</p>
+                    <p className="text-xs text-muted-foreground">Peak Insulin</p>
+                  </div>
+                  <div className="bg-medical-accent/30 border border-medical-border rounded-lg p-4">
+                    <p className="text-3xl font-bold text-medical-primary">2.5hr</p>
+                    <p className="text-xs text-muted-foreground">Recovery Time</p>
+                  </div>
                 </div>
               </div>
             </div>
