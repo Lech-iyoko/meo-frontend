@@ -1,41 +1,48 @@
 // src/app/api/chat/route.ts
-export const runtime = 'nodejs'; 
+import { NextRequest, NextResponse } from 'next/server';
 
-import { NextResponse } from 'next/server';
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { query, session_id } = body;
+    const { message, session_id } = body;
 
-    // Use the correct public environment variable
-    const backendApiUrl = process.env.NEXT_PUBLIC_MEO_API_URL;
-
-    if (!backendApiUrl) {
-      console.error("NEXT_PUBLIC_MEO_API_URL environment variable is not set.");
-      throw new Error("Backend API URL is not configured.");
+    // Validate input
+    if (!message) {
+      return NextResponse.json(
+        { error: 'Message is required' },
+        { status: 400 }
+      );
     }
-    
-    console.log(`Proxying request for session ${session_id} to: ${backendApiUrl}/chat`);
 
-    // Forward the request to your real backend on EC2
-    const backendResponse = await fetch(`${backendApiUrl}/chat`, {
+    console.log('[Proxy] Forwarding to backend:', { message, session_id });
+
+    const response = await fetch('https://api.meo.meterbolic.com/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, session_id }),
+      body: JSON.stringify({
+        message: message,
+        session_id: session_id || 'demo_session',
+      }),
     });
 
-    if (!backendResponse.ok) {
-      const errorData = await backendResponse.json();
-      console.error("Backend returned an error:", errorData);
-      return NextResponse.json({ detail: errorData.detail || 'Error from backend service' }, { status: backendResponse.status });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Proxy] Backend error:', response.status, errorText);
+      return NextResponse.json(
+        { error: `Backend error: ${response.status}` },
+        { status: response.status }
+      );
     }
 
-    const data = await backendResponse.json();
+    const data = await response.json();
+    console.log('[Proxy] Backend response received');
     return NextResponse.json(data);
 
   } catch (error) {
-    console.error('An unexpected error occurred in the API route:', error);
-    return NextResponse.json({ detail: 'An internal server error occurred in the proxy.' }, { status: 500 });
+    console.error('[Proxy] Chat API error:', error);
+    return NextResponse.json(
+      { error: 'Failed to process chat request' },
+      { status: 500 }
+    );
   }
 }
