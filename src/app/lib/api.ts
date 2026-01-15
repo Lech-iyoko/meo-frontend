@@ -21,9 +21,9 @@ export async function postChatMessage(query: string, sessionId: string): Promise
     const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // The body correctly sends "query" and "session_id"
+        // The body sends "message" and "session_id" to match backend expectations
         body: JSON.stringify({
-            query: query,
+            message: query,
             session_id: sessionId,
         }),
     });
