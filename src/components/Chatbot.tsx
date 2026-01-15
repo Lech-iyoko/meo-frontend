@@ -40,17 +40,63 @@ type Vendor = {
   available: boolean;
 };
 
+// --- Grafana Service Data Types ---
+interface BioAgeRecord {
+  time: number;
+  value: number;
+  analyte: string;
+  recordType: "CLINICAL" | "TARGET";
+  subjectState: string;
+  unit?: string;
+  measurementSeries?: string;
+}
+
+interface BioAgeData {
+  userid: string;
+  records: BioAgeRecord[];
+  count: number;
+}
+
+interface KraftDataPoint {
+  time: number;
+  measurementSeries: string;
+  analyte: "Insulin" | "Glucose" | "Triglyceride";
+  value: number;
+  sessionlabel: string;
+}
+
+interface GraphData {
+  user_email: string;
+  bio_age_data: BioAgeData;
+  kraft_curve_data: KraftDataPoint[];
+}
+
+// Transformed chart data for display
+interface TransformedKraftPoint {
+  time: string;
+  glucose: number;
+  insulin: number;
+}
+
+interface BioAgeMetrics {
+  baseline: number | null;
+  target: number | null;
+  improvement: number | null;
+  baselineDate: string | null;
+  targetDate: string | null;
+}
+
 // --- Mock Vendor Data ---
 const mockVendors: Vendor[] = [
   {
     id: '1',
     name: 'Taylor Made Rehab',
     category: 'Metabolic Recovery Specialists',
-    description: 'Specialized protocol for delayed insulin response patterns. Combines targeted nutrition therapy, metabolic testing, and personalized supplementation.',
+    description: 'Specialised protocol for delayed insulin response patterns. Combines targeted nutrition therapy, metabolic testing, and personalised supplementation.',
     rating: 4.9,
     reviews: 127,
-    price: '$180/session',
-    location: 'Austin, TX',
+    price: '£180/session',
+    location: 'London, UK',
     tags: ['Insulin Resistance', 'Fatigue Protocol', 'Nutrition'],
     available: true,
   },
@@ -61,8 +107,8 @@ const mockVendors: Vendor[] = [
     description: 'Comprehensive metabolic panel testing with detailed Kraft curve analysis and personalized intervention plans.',
     rating: 4.8,
     reviews: 89,
-    price: '$250/consult',
-    location: 'Houston, TX',
+    price: '£250/consult',
+    location: 'Leeds, UK',
     tags: ['Lab Testing', 'Kraft Analysis', 'Clinical'],
     available: true,
   },
@@ -73,15 +119,94 @@ const mockVendors: Vendor[] = [
     description: 'CGM-based coaching program with real-time glucose monitoring and lifestyle optimization strategies.',
     rating: 4.7,
     reviews: 203,
-    price: '$150/month',
-    location: 'Dallas, TX',
+    price: '£150/month',
+    location: 'Manchester, UK',
     tags: ['CGM', 'Coaching', 'Lifestyle'],
     available: false,
   },
 ];
 
-// --- Kraft Curve Data (from spec) ---
-const kraftCurveData: GraphDataPoint[] = [
+// --- Helper Functions for Graph Data ---
+
+// Extract graph data from retrieved_sources
+function extractGraphData(sources: { type?: string; gap_solved?: string }[]): GraphData | null {
+  const graphSource = sources.find(s => s.type === "graph_data");
+  if (!graphSource || !graphSource.gap_solved) return null;
+  
+  try {
+    return JSON.parse(graphSource.gap_solved);
+  } catch (e) {
+    console.error("Failed to parse graph data:", e);
+    return null;
+  }
+}
+
+// Get baseline and target from bio age data
+function getBioAgeMetrics(data: BioAgeData): BioAgeMetrics {
+  const baseline = data.records.find(r => r.recordType === "CLINICAL");
+  const target = data.records.find(r => r.recordType === "TARGET");
+  
+  return {
+    baseline: baseline?.value ?? null,
+    target: target?.value ?? null,
+    improvement: baseline && target ? baseline.value - target.value : null,
+    baselineDate: baseline ? new Date(baseline.time).toLocaleDateString() : null,
+    targetDate: target ? new Date(target.time).toLocaleDateString() : null,
+  };
+}
+
+// Transform kraft data for charting (group by time)
+function transformKraftForChart(data: KraftDataPoint[]): TransformedKraftPoint[] {
+  const timeMap = new Map<number, { time: number; Insulin?: number; Glucose?: number }>();
+  
+  data.forEach(point => {
+    if (!timeMap.has(point.time)) {
+      timeMap.set(point.time, { time: point.time });
+    }
+    const entry = timeMap.get(point.time)!;
+    if (point.analyte === "Insulin" || point.analyte === "Glucose") {
+      entry[point.analyte] = point.value;
+    }
+  });
+  
+  const sorted = Array.from(timeMap.values()).sort((a, b) => a.time - b.time);
+  
+  // Convert to chart format with time labels
+  return sorted.map((entry, index) => ({
+    time: `${(index * 0.5).toFixed(1)}hr`,
+    glucose: entry.Glucose ?? 0,
+    insulin: entry.Insulin ?? 0,
+  }));
+}
+
+// Generate bio age trajectory data from records
+function generateBioAgeTrajectory(metrics: BioAgeMetrics): BiologicalAgeDataPoint[] {
+  if (metrics.baseline === null || metrics.target === null) {
+    return biologicalAgeDataDefault;
+  }
+  
+  // Generate a trajectory from baseline to target over 18 data points
+  const points: BiologicalAgeDataPoint[] = [];
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - 3); // Start 3 months ago
+  
+  const stepValue = (metrics.baseline - metrics.target) / 17;
+  
+  for (let i = 0; i < 18; i++) {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + i * 5);
+    points.push({
+      date: `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}`,
+      you: metrics.baseline - (stepValue * i),
+      target: metrics.target,
+    });
+  }
+  
+  return points;
+}
+
+// --- Default Kraft Curve Data (fallback) ---
+const kraftCurveDataDefault: GraphDataPoint[] = [
   { time: '0hr', glucose: 85, insulin: 5 },
   { time: '0.5hr', glucose: 145, insulin: 55 },
   { time: '1hr', glucose: 160, insulin: 95 },
@@ -102,7 +227,7 @@ type BiologicalAgeDataPoint = {
   target: number;
 };
 
-const biologicalAgeData: BiologicalAgeDataPoint[] = [
+const biologicalAgeDataDefault: BiologicalAgeDataPoint[] = [
   { date: '09/22', you: 41.93, target: 41.5 },
   { date: '09/27', you: 41.9, target: 41.5 },
   { date: '10/02', you: 41.85, target: 41.5 },
@@ -355,7 +480,17 @@ export default function MeOInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [loading, setLoading] = useState(false);
-  const [graphData, setGraphData] = useState<GraphDataPoint[]>(kraftCurveData);
+  const [graphData, setGraphData] = useState<GraphDataPoint[]>(kraftCurveDataDefault);
+  // Bio age metrics from API
+  const [bioAgeMetrics, setBioAgeMetrics] = useState<BioAgeMetrics>({
+    baseline: 41.9,
+    target: 41.5,
+    improvement: 0.4,
+    baselineDate: null,
+    targetDate: null,
+  });
+  // Bio age trajectory data for chart
+  const [bioAgeTrajectory, setBioAgeTrajectory] = useState<BiologicalAgeDataPoint[]>(biologicalAgeDataDefault);
   // viewMode is controlled by backend mode field - 'response' is default (full-width chat)
   const [viewMode, setViewMode] = useState<'response' | 'analysis' | 'solution'>('response');
   // Resizable panel width (percentage for chat panel when in split mode)
@@ -396,6 +531,15 @@ export default function MeOInterface() {
     setLoading(true);
     setIsActive(true);
 
+    // Determine intended mode from query (but don't apply yet)
+    const lowerMessage = messageText.toLowerCase();
+    let intendedMode: 'response' | 'analysis' | 'solution' = viewMode;
+    if (lowerMessage.includes('kraft') || lowerMessage.includes('analyze') || lowerMessage.includes('analysis')) {
+      intendedMode = 'analysis';
+    } else if (lowerMessage.includes('specialist') || lowerMessage.includes('find')) {
+      intendedMode = 'solution';
+    }
+
     try {
       const res = await fetch('https://api.meo.meterbolic.com/api/chat', {
         method: 'POST',
@@ -405,28 +549,39 @@ export default function MeOInterface() {
       
       const data = await res.json();
       const botResponse = data.response;
+
+      // Add the bot response first
+      setMessages(prev => [...prev, { role: 'assistant', content: botResponse }]);
       
-      // Backend-driven mode detection - only switch if backend explicitly sets mode
+      // Now apply the mode transition AFTER response is added
+      // Backend mode takes priority, then fallback to frontend detection
       if (data.mode === 'analysis' || data.mode === 'solution') {
         setViewMode(data.mode);
+      } else if (intendedMode !== 'response') {
+        setViewMode(intendedMode);
       }
       
-      // Check for graph data in sources
-      const retrievedSources = data.retrieved_sources || [];
-      for (const source of retrievedSources) {
-        if (source.type === 'graph_data' && source.gap_solved) {
-          try {
-            const parsedData = JSON.parse(source.gap_solved);
-            if (Array.isArray(parsedData)) {
-              setGraphData(parsedData);
-            }
-          } catch {
-            console.warn('Failed to parse graph data, using defaults');
+      // Check for graph data in sources when in analysis mode
+      const finalMode = data.mode || intendedMode;
+      if (finalMode === 'analysis') {
+        const retrievedSources = data.retrieved_sources || [];
+        const graphDataParsed = extractGraphData(retrievedSources);
+        
+        if (graphDataParsed) {
+          // Extract and set bio age metrics
+          if (graphDataParsed.bio_age_data) {
+            const metrics = getBioAgeMetrics(graphDataParsed.bio_age_data);
+            setBioAgeMetrics(metrics);
+            setBioAgeTrajectory(generateBioAgeTrajectory(metrics));
+          }
+          
+          // Transform and set kraft curve data
+          if (graphDataParsed.kraft_curve_data && graphDataParsed.kraft_curve_data.length > 0) {
+            const transformedKraft = transformKraftForChart(graphDataParsed.kraft_curve_data);
+            setGraphData(transformedKraft);
           }
         }
       }
-
-      setMessages(prev => [...prev, { role: 'assistant', content: botResponse }]);
 
     } catch (err) {
       console.error(err);
@@ -440,6 +595,7 @@ export default function MeOInterface() {
   };
 
   const handleActionClick = (text: string) => {
+    // Don't set mode here - let handleSendMessage handle it after response
     handleSendMessage(undefined, text);
   };
 
@@ -800,17 +956,21 @@ export default function MeOInterface() {
                     {/* Gauge Display */}
                     <div className="flex flex-col items-center py-4">
                       <BiologicalAgeGauge 
-                        biologicalAge={41.9} 
+                        biologicalAge={bioAgeMetrics.baseline ?? 41.9} 
                         chronologicalAge={42} 
-                        targetAge={41.5} 
+                        targetAge={bioAgeMetrics.target ?? 41.5} 
                       />
                       
                       {/* Text Below Gauge */}
                       <div className="text-center mt-4">
                         <p className="text-sm text-muted-foreground">
-                          You are aging <span className="text-medical-primary font-bold">4% slower</span> than average
+                          {bioAgeMetrics.improvement !== null && bioAgeMetrics.improvement > 0 ? (
+                            <>Improvement: <span className="text-medical-primary font-bold">{bioAgeMetrics.improvement.toFixed(2)} years</span></>
+                          ) : (
+                            <>You are aging <span className="text-medical-primary font-bold">4% slower</span> than average</>
+                          )}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">Target Age: 41.5</p>
+                        <p className="text-xs text-muted-foreground mt-1">Target Age: {bioAgeMetrics.target?.toFixed(2) ?? '41.50'}</p>
                       </div>
                     </div>
                   </div>
@@ -853,15 +1013,15 @@ export default function MeOInterface() {
                           },
                           xAxis: {
                             type: 'category',
-                            data: biologicalAgeData.map(d => d.date),
+                            data: bioAgeTrajectory.map(d => d.date),
                             axisLine: { lineStyle: { color: '#374151' } },
                             axisLabel: { color: '#9ca3af', fontSize: 10, interval: 2 },
                             axisTick: { lineStyle: { color: '#374151' } },
                           },
                           yAxis: {
                             type: 'value',
-                            min: 41.45,
-                            max: 41.95,
+                            min: bioAgeMetrics.target ? bioAgeMetrics.target - 0.1 : 41.45,
+                            max: bioAgeMetrics.baseline ? bioAgeMetrics.baseline + 0.05 : 41.95,
                             axisLine: { lineStyle: { color: '#374151' } },
                             axisLabel: { 
                               color: '#9ca3af', 
@@ -888,7 +1048,7 @@ export default function MeOInterface() {
                             {
                               name: 'YOU',
                               type: 'line',
-                              data: biologicalAgeData.map(d => d.you),
+                              data: bioAgeTrajectory.map(d => d.you),
                               smooth: true,
                               lineStyle: { color: '#f97316', width: 3 },
                               itemStyle: { color: '#f97316' },
@@ -898,7 +1058,7 @@ export default function MeOInterface() {
                             {
                               name: 'OUR TARGET',
                               type: 'line',
-                              data: biologicalAgeData.map(d => d.target),
+                              data: bioAgeTrajectory.map(d => d.target),
                               smooth: true,
                               lineStyle: { color: '#a4d65e', width: 3 },
                               itemStyle: { color: '#a4d65e' },
