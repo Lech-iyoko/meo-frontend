@@ -376,7 +376,7 @@ function BiologicalAgeGauge({
         detail: {
           fontSize: 28,
           fontWeight: 'bold',
-          color: 'hsl(var(--medical-primary))',
+          color: '#ffffff',
           offsetCenter: [0, '25%'],
           valueAnimation: true,
           formatter: function (value: number) {
