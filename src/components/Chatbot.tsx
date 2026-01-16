@@ -90,12 +90,12 @@ interface BioAgeMetrics {
 const mockVendors: Vendor[] = [
   {
     id: '1',
-    name: 'EOS- Dr Arup Sen',
+    name: 'EOS  Dr Arup Sen',
     category: 'Consultant Physician (Stroke, Geriatric & Internal Medicine)',
     description: 'Triple‑accredited consultant physician specialising in stroke, transient ischaemic attack (TIA), geriatric medicine, and complex internal medicine. Provides holistic, patient‑centred assessments with a focus on prevention, cognitive health, and long‑term wellbeing.',
     rating: 4.9,
     reviews: 127,
-    price: '£240/session',
+    price: '£400/session',
     location: 'London, UK',
     tags: ['Stroke', 'TIA', 'Geriatric Medicine', 'Hypertension', 'Cognitive Health', 'Internal Medicine'],
     available: true,
