@@ -90,26 +90,26 @@ interface BioAgeMetrics {
 const mockVendors: Vendor[] = [
   {
     id: '1',
+    name: 'EOS- Dr Arup Sen',
+    category: 'Consultant Physician (Stroke, Geriatric & Internal Medicine)',
+    description: 'Triple‑accredited consultant physician specialising in stroke, transient ischaemic attack (TIA), geriatric medicine, and complex internal medicine. Provides holistic, patient‑centred assessments with a focus on prevention, cognitive health, and long‑term wellbeing.',
+    rating: 4.9,
+    reviews: 127,
+    price: '£240/session',
+    location: 'London, UK',
+    tags: ['Stroke', 'TIA', 'Geriatric Medicine', 'Hypertension', 'Cognitive Health', 'Internal Medicine'],
+    available: true,
+  },
+  {
+    id: '2',
     name: 'Taylor Made Rehab',
     category: 'Metabolic Recovery Specialists',
     description: 'Specialised protocol for delayed insulin response patterns. Combines targeted nutrition therapy, metabolic testing, and personalised supplementation.',
     rating: 4.9,
     reviews: 127,
-    price: '£180/session',
+    price: '£120/session',
     location: 'London, UK',
     tags: ['Insulin Resistance', 'Fatigue Protocol', 'Nutrition'],
-    available: true,
-  },
-  {
-    id: '2',
-    name: 'Metabolic Health Institute',
-    category: 'Clinical Testing & Analysis',
-    description: 'Comprehensive metabolic panel testing with detailed Kraft curve analysis and personalized intervention plans.',
-    rating: 4.8,
-    reviews: 89,
-    price: '£250/consult',
-    location: 'Leeds, UK',
-    tags: ['Lab Testing', 'Kraft Analysis', 'Clinical'],
     available: true,
   },
   {
@@ -1193,7 +1193,7 @@ export default function MeOInterface() {
                     <p className="text-xs text-muted-foreground">Peak Insulin</p>
                   </div>
                   <div className="bg-medical-accent/30 border border-medical-border rounded-lg p-4">
-                    <p className="text-3xl font-bold text-medical-primary">2.5hr</p>
+                    <p className="text-3xl font-bold text-medical-primary">5hr</p>
                     <p className="text-xs text-muted-foreground">Recovery Time</p>
                   </div>
                 </div>
